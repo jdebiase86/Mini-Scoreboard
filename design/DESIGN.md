@@ -50,9 +50,10 @@ says go.
    - Battery lives inside the display's case, not in the stand, so the
      screen lifts off and runs anywhere (garage, patio).
    - Must last a whole football game with the screen bright. Battery: JLJLUP
-     LP103665, 3.7 V 3000 mAh (likely ~2500 real), about 65 x 36 x 10 mm,
+     LP103665, 3.7 V 3000 mAh (likely ~2500 real), about 67 x 36 x 10 mm,
      protected, JST 1.25 mm 2-pin plug (matches the board's BAT plug, to be
-     confirmed with a ruler photo). 7 to 10 hours. Closed case about 24 mm.
+     confirmed with a ruler photo). 7 to 9 hours. Ordered; full details and
+     the polarity check in design/BATTERY.md. Closed case about 24 mm.
    - Small on/off slide switch on the side edge (the board has none).
      Charges through the board's USB-C while running.
    - Case: the MakerWorld "ESP32-32E 4.0 CYD" enclosure Joe found, buttons

@@ -7,7 +7,7 @@ designer); download them from MakerWorld into this folder to rebuild.
 deepen.py keeps everything at board level the same (standoffs, USB-C slot,
 lid fit) and adds a section under the board for a flat LiPo:
 
-    python3 deepen.py esp32-4inch-case-with-buttons_base.stl base_deep.stl 10 65 36   # depth, battery length, width
+    python3 deepen.py esp32-4inch-case-with-buttons_base.stl base_deep.stl 10 67 36   # depth, battery length, width
     python3 views2.py esp32-4inch-case_base.stl esp32-4inch-case_lid.stl base_deep.stl 10 case_draft1.png
 
 Draft 1 (Oct 6, 2026): 10 mm extra depth for a ~2000 mAh 10 x 34 x 50 mm
@@ -34,7 +34,7 @@ moved to a 62 x 52 pocket. Closed case about 24 mm thick. About 8 to 10 hours
 with the screen bright.
 
 Draft 3 (Oct 6): battery picked - JLJLUP LP103665, 3.7 V 3000 mAh, about
-65 x 36 x 10 mm, protection circuit, JST 1.25 mm 2-pin plug already on it
-(Amazon 4-pack, one per board plus a spare). Guides moved to a 67 x 38 pocket.
+67 x 36 x 10 mm (seller drawing; listing says 65), protection circuit, JST 1.25 mm 2-pin plug already on it
+(Amazon 4-pack, one per board plus a spare). Guides moved to a 69 x 38 pocket.
 Before first plug-in: check the red wire lands on the "+" mark beside the
 board's BAT plug (left "-", right "+" seen from the back, plug at the bottom).
