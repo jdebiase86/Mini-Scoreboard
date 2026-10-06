@@ -19,3 +19,11 @@ screen 2.90 mm above the PCB; the case pocket is 111.1 x 61.15 mm.
 Waiting on: battery plug photo (picks the battery, which sets the depth),
 the exact switch (sets the slot), and a stand that fits the deeper case.
 Needs: pip install trimesh manifold3d shapely scipy networkx
+
+Buttons version (Oct 6): the designer's "with buttons" base has two flexing
+tabs in the floor with posts that press RESET and BOOT on the back of the
+board (labelled R and B outside). deepen.py works on it unchanged: the posts
+grow by the same 10 mm. Use this one. The lid is the same in both versions.
+Free floor space under the board is about 90 x 58 mm between the corner
+posts and the button posts, so a bigger battery (about 50 x 60 mm, ~3000 mAh)
+fits at the same depth.

@@ -15,7 +15,8 @@ bot.apply_translation([0, 0, -H])
 sec = base.section(plane_origin=[0, 0, ZC], plane_normal=[0, 0, 1])
 p2, T = sec.to_2D(to_2D=np.eye(4))
 prof = unary_union(p2.polygons_full)
-spacer = trimesh.creation.extrude_polygon(prof, H)
+polys = list(prof.geoms) if prof.geom_type == "MultiPolygon" else [prof]
+spacer = trimesh.util.concatenate([trimesh.creation.extrude_polygon(pg, H) for pg in polys])
 spacer.apply_translation([0, 0, ZC - H])
 parts = [top, bot, spacer]
 # close the USB-C slot below the original floor line (slot stays exactly as before above it)
@@ -33,7 +34,8 @@ for cx, cy in ((bx0, by0), (bx0 + bw, by0), (bx0, by0 + bh), (bx0 + bw, by0 + bh
 import manifold3d
 def M(m): return manifold3d.Manifold(manifold3d.Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
 acc = M(parts[0])
-for p in parts[1:]: acc = acc + M(p)
+for p in parts[1:]:
+    for q in (p.split(only_watertight=True) if len(p.split(only_watertight=True)) > 1 else [p]): acc = acc + M(q)
 # switch slot through the right end wall (x = 111..116), mid-depth of the new section
 sw = trimesh.creation.box(extents=[8, 9.5, 4.5]); sw.apply_translation([113.5, 30.58, ZC - H / 2 - 0.5])
 acc = acc - M(sw)
