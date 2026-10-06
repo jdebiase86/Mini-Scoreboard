@@ -43,9 +43,24 @@ says go.
 8. Logos: only the favourites' logos (plus a few opponent logos, fetched
    when needed) are stored on the mini, downloaded from ESPN and shrunk.
    Same files as Scoreboard/assets/logos.
-9. Power: cord is the normal setup, battery is a bonus. Screen dims after
-   about a minute and wakes on a tap. No battery is picked until Joe sends a
-   close-up photo of the BAT plug (sizes and wire order vary).
+9. Power and case:
+   - Board: the 4.0" ESP32-32E display (iPistBit listing, ST7796U screen chip,
+     same board as the Hosyond with ST7796S; support both). Joe has three
+     coming (his, a gift unit, a spare).
+   - Battery lives inside the display's case, not in the stand, so the
+     screen lifts off and runs anywhere (garage, patio).
+   - Must last a whole football game with the screen bright: about 2000 mAh
+     flat protected LiPo (roughly 10 x 34 x 50 mm), expect 5 to 7 hours.
+   - Small on/off slide switch on the side edge (the board has none).
+     Charges through the board's USB-C while running.
+   - Case: a deeper back shell for the battery; front frame like the
+     MakerWorld "ESP32-32E 4.0 CYD" enclosure Joe found (print the "With
+     Buttons" version first to check fit, M3x6 screws). It must still sit
+     on a desk stand (match that model's orange stand or a clip-on one).
+   - Screen dims after about a minute when idle and wakes on a tap.
+   - Before buying the battery: close-up photo of the board's BAT plug
+     (plug sizes and wire order vary; reversed wires can damage the board).
+     Draw the case for Joe to OK before printing.
 10. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
 
