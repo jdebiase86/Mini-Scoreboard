@@ -5,7 +5,9 @@ import sys, trimesh, numpy as np, warnings; warnings.filterwarnings("ignore")
 from shapely.geometry import box
 from shapely.ops import unary_union
 SRC, OUT = sys.argv[1], sys.argv[2]
-H = float(sys.argv[3]) if len(sys.argv) > 3 else 10.0     # extra depth, mm
+H = float(sys.argv[3]) if len(sys.argv) > 3 else 10.0     # extra depth, mm (= battery thickness)
+BL = float(sys.argv[4]) if len(sys.argv) > 4 else 60.0    # battery length (along the case), mm
+BW = float(sys.argv[5]) if len(sys.argv) > 5 else 50.0    # battery width, mm
 ZC = -6.3            # cut height: inside the standoff zone, above the floor (floor top -6.7)
 FLOOR_TOP = -6.7
 base = trimesh.load(SRC)
@@ -23,8 +25,9 @@ parts = [top, bot, spacer]
 fill = trimesh.creation.box(extents=[4.3, 12.4, H + 0.4])
 fill.apply_translation([-2.85, 30.58, FLOOR_TOP - H / 2])
 parts.append(fill)
-# battery cradle: L-shaped corner ribs, 3 mm tall, around a 52 x 36 pocket centred under the board
-bx0, by0, bw, bh, rt, rh = 29.5, 12.5, 52.0, 36.0, 1.6, 3.0
+# battery cradle: L-shaped corner ribs, 3 mm tall, around a pocket 2 mm bigger than the battery, centred under the board
+bw, bh, rt, rh = BL + 2, BW + 2, 1.6, 3.0
+bx0, by0 = 55.55 - bw / 2, 30.575 - bh / 2
 fz = FLOOR_TOP - H
 for cx, cy in ((bx0, by0), (bx0 + bw, by0), (bx0, by0 + bh), (bx0 + bw, by0 + bh)):
     sx = -1 if cx == bx0 else 1; sy = -1 if cy == by0 else 1

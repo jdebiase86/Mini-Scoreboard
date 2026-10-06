@@ -49,13 +49,14 @@ says go.
      coming (his, a gift unit, a spare).
    - Battery lives inside the display's case, not in the stand, so the
      screen lifts off and runs anywhere (garage, patio).
-   - Must last a whole football game with the screen bright: about 2000 mAh
-     flat protected LiPo (roughly 10 x 34 x 50 mm), expect 5 to 7 hours.
+   - Must last a whole football game with the screen bright. Joe picked a
+     10 mm thick, about 3000 mAh flat protected LiPo (about 60 x 50 mm,
+     often "105060"): 8 to 10 hours. Closed case about 24 mm thick.
    - Small on/off slide switch on the side edge (the board has none).
      Charges through the board's USB-C while running.
-   - Case: a deeper back shell for the battery; front frame like the
-     MakerWorld "ESP32-32E 4.0 CYD" enclosure Joe found (print the "With
-     Buttons" version first to check fit, M3x6 screws). It must still sit
+   - Case: the MakerWorld "ESP32-32E 4.0 CYD" enclosure Joe found, buttons
+     version (flex tabs press RESET and BOOT), with the base made 10 mm
+     deeper (case/deepen.py, posts grow to match); lid unchanged, M3x6 screws. It must still sit
      on a desk stand (match that model's orange stand or a clip-on one).
    - Screen dims after about a minute when idle and wakes on a tap.
    - Before buying the battery: close-up photo of the board's BAT plug
