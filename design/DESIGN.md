@@ -86,7 +86,10 @@ says go.
      through the board's USB-C while running. Instead: dim / battery saver
      mode (screen dims, slower checks, screen sleeps, tap to wake), set from
      the screen and maybe the back "B" tab (BOOT button, IO0, readable once
-     running). A battery level icon if the board can measure the battery.
+     running). Saver is only ever turned on and off by Joe (Oct 7) - never
+     automatically on unplugging. Even in Saver the screen wakes for big
+     moments (touchdown, turnover, red zone). A battery level icon if the
+     board can measure the battery.
    - Case: the MakerWorld "ESP32-32E 4.0 CYD" enclosure Joe found, buttons
      version (flex tabs press RESET and BOOT), with the base made 10 mm
      deeper (case/deepen.py, posts grow to match); lid unchanged, M3x6 screws. It must still sit
