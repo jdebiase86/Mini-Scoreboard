@@ -6,6 +6,7 @@ Scoreboard repo (assets/logos). Needs Pillow and the Inter font.
     python3 mock_mini.py opp    -> mini_redzone_opp.png (red zone pop-ups, ours vs theirs)
     python3 mock_mini.py plays  -> mini_plays.png (defense, turnover and punt animations)
     python3 mock_mini.py game   -> mini_game_extras.png (win chance bar, drive tracker options, close game, stats)
+    python3 mock_mini.py game2  -> mini_game_v2.png (picked: drive on the field, play pop-up, small HOME, no AUTO button)
 
 LOGOS points at Scoreboard/assets/logos (default: a Scoreboard checkout next
 to this repo). FONTS points at the folder holding Inter-Bold.otf etc.
@@ -151,7 +152,15 @@ def home(rz=False):
             text(d, cx, y0 + 125, t["small"], font(FS, 12), GREEN if t.get("win") else GREY, "mm")
     return finish(img, "1_home" + ("_rz" if rz else ""))
 
+COMPACT = False   # Oct 7: game screens get only a smaller HOME button; AUTO lives on the home screen
+
 def game_bottom(d, auto_on=False, mid=None):
+    if COMPACT:
+        rbox(d, 8, 274, 116, 314, TILE, r=12, outline=EDGE)
+        home_icon(d, 32, 294, 11); text(d, 74, 294, "HOME", font(FB, 15), WHITE, "mm")
+        if auto_on:
+            pill(d, 472, 284, "AUTO  next game in 14s", (24, 40, 70), fg=(170, 190, 230), size=12, anchor="r")
+        return
     button(d, 8, 266, 168, 314, "HOME", icon="home")
     button(d, 312, 266, 472, 314, "AUTO", icon="auto", hi=auto_on)
     if mid: text(d, 240, 290, mid, font(FS, 12), GREY, "mm")
@@ -552,6 +561,24 @@ def stats_page():
     text(d, 240, 288 + 18, "Tap anywhere to go back", font(FS, 11), DIM, "mm")
     return finish(img, "stats")
 
+# ---------------------------------------------------------- Oct 7 game screen: drive on the field, play pop-up, small HOME
+def game_v2(popup=False):
+    def ex(img, d, c):
+        start = c["gx1"] - 25 * c["yd"]; ball = c["bx"]
+        band = Image.new("RGBA", img.size, (0, 0, 0, 0)); bd = ImageDraw.Draw(band)
+        bd.rectangle(R(ball, c["fy0"] + 4, start, c["fy1"] - 4), fill=(255, 255, 255, 60))
+        img.alpha_composite(band); d = ImageDraw.Draw(img)
+        d.line(R(start, c["fy0"] + 2, start, c["fy1"] - 2), fill=WHITE, width=S)
+        football(d, ball, (c["fy0"] + c["fy1"]) / 2, 16, 10)
+        win_bar(d)
+        if popup:
+            rbox(d, 124, 248, 472, 316, (34, 40, 54), r=14, outline=(90, 100, 125))
+            text(d, 138, 263, "LAST PLAY", font(FB, 10), GREY, "lm")
+            text(d, 458, 263, "2ND & 6 AT PHI 34", font(FB, 10), GREY, "rm")
+            text(d, 298, 292, "Run up the middle for 4 yards", font(FB, 17), WHITE, "mm")
+        return d
+    return live(line="", extra=ex)
+
 if len(sys.argv) > 1 and sys.argv[1] == "rz":
     shots = [("1. Home (Giants in red zone)", home(rz=True)), ("2. Red zone alert (3 sec)", live(rz=True, alert=True)),
              ("3. Game screen in red zone", live(rz=True))]
@@ -564,6 +591,11 @@ elif len(sys.argv) > 1 and sys.argv[1] == "game":
     shots = [("A. Play line switches to drive", opt_a()), ("B. Play pops up, then hides", opt_b()), ("C. Drive drawn on the field", opt_c()),
              ("Close game alert", close_game()), ("Tap the score: stats", stats_page())]
     name = "mini_game_extras.png"
+elif len(sys.argv) > 1 and sys.argv[1] == "game2":
+    COMPACT = True
+    shots = [("1. Live game (drive shown on the field)", game_v2()), ("2. A play just happened: it pops up", game_v2(popup=True)),
+             ("3. Final, while Auto is rotating", final()), ("4. Upcoming game", upcoming())]
+    name = "mini_game_v2.png"
 elif len(sys.argv) > 1 and sys.argv[1] == "plays":
     shots = [("1. Interception (ours)", picked_off()), ("2. Fumble recovery (ours)", fumble()), ("3. Third-down stop", stopped()),
              ("4. Turnover on downs", stonewalled()), ("5. Sack", sacked()), ("6. They punt", puntastic()),

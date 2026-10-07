@@ -18,8 +18,10 @@ says go.
 2. Home screen: a tile per favourite team plus an AUTO tile. Live games get a
    red outline and LIVE tag and sort to the top. Finals read "Final 31-24"
    with "Win vs LSU" (green) underneath. Upcoming games show day and time.
-3. Tap a team: its game goes full screen and stays. HOME and AUTO buttons
-   along the bottom. AUTO rotates through the favourites about every 20 s
+3. Tap a team: its game goes full screen and stays. Game screens have only
+   a smaller HOME button bottom left (Oct 7); AUTO is started from the AUTO
+   tile on the home screen, and a small "AUTO next game in 14s" tag shows
+   while it rotates (design/mini_game_v2.png). Tapping HOME ends Auto. AUTO rotates through the favourites about every 20 s
    (live first, else each team's final or next game); "next in 14s" shows
    while it runs.
 4. Live football keeps the field strip: end zones in team colours (away
@@ -48,10 +50,10 @@ says go.
    Detected from ESPN's last-play text and down/possession changes; a play
    can be missed if two happen between checks. Could go on the LED board too.
 8. Game screen extras (Oct 7, mock-ups design/mini_game_extras.png):
-   win chance bar under the field (Joe loves it); drive tracker - three
-   options drawn (A line that alternates play/drive, B play pop-up over the
-   buttons, C drive drawn on the field with play left and drive right),
-   waiting on Joe's pick; close game alert (late, within one score);
+   win chance bar under the field (Joe loves it). Picked: the drive drawn
+   on the field as a light band from where it started to the ball (no
+   drive text), and each new play pops up as a "LAST PLAY" card beside the
+   HOME button for a few seconds, then hides (design/mini_game_v2.png); close game alert (late, within one score);
    tap the score for stats (Joe is fine giving that tap up if needed).
    Other sports: everything the LED board does (hockey goal and
    intermission, baseball run/home run/grand slam, basketball quarter card
@@ -111,6 +113,8 @@ says go.
 - mini_plays.png: the nine play animations (defense, turnovers, punts).
 - mini_game_extras.png: win chance bar, drive tracker options A/B/C, close
   game alert, stats page.
+- mini_game_v2.png: the picked game screen (drive on the field, play
+  pop-up, small HOME, no AUTO button), final with Auto running, upcoming.
 - mock_mini.py draws them all; see the top of the file.
 
 ## Device renders
