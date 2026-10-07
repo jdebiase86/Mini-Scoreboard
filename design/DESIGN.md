@@ -2,8 +2,8 @@
 
 A desk-sized mini scoreboard on a 4.0" ESP32 touch screen. Companion to the
 64x64 LED board in [Scoreboard](https://github.com/jdebiase86/Scoreboard).
-Design only so far: no firmware is written until the board arrives and Joe
-says go.
+The first board arrived Oct 7, 2026 and Joe said go: firmware is being
+built in the stages below.
 
 ## Hardware (ordered, not here yet - Amazon shows one board due Fri Oct 9 again, the other two Oct 20 to Nov 5, 2026; battery and speaker sooner)
 - Hosyond 4.0" ESP32 display (Amazon B0FGJJ24S1): ESP32-32E (ESP32-D0WD-V3,
@@ -104,6 +104,25 @@ says go.
      Draw the final case for Joe to OK before printing.
 12. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
+
+## Build stages (Oct 7)
+1. Screen, touch and Wi-Fi setup (v0.1, firmware/mini): touch setup on first
+   start, setup screen with a code to scan (joins the mini's own Wi-Fi, the
+   setup page pops up), home screen tiles (up to 5 teams + AUTO) with
+   placeholder team pages and a HOME button, settings at mini.local,
+   screen dims after a minute, BOOT held 5 s forgets the Wi-Fi, updates
+   over Wi-Fi from this repo's releases. Screens: design/mini_stage1.png
+   (drawn by the real code, firmware/hosttest). Hardware test:
+   firmware/mini_hw_test. Both flash from the browser (flash/README.md).
+2. Scores: ESPN per favourite team, logos, live / final / upcoming tiles,
+   AUTO rotation.
+3. Game screens: football field strip with the drive, win chance bar, last
+   play pop-up; then the other sports.
+4. Red zone and play animations (touchdown, field goal, goal, home run and
+   win first), then the rest.
+5. Sound.
+6. Saver mode and the battery level icon.
+7. Remote for the big LED board (last).
 
 ## Technical notes for later
 - No PSRAM: fetch one favourite team's ESPN scoreboard at a time and filter
