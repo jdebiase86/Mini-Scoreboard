@@ -1,5 +1,6 @@
 # Renders the closed case on a placeholder stand with mock-up screens on it.
-# usage: scene.py out.png original_lid.stl deep_base.stl
+# usage: [CASE=r,g,b STAND=r,g,b] scene.py out.png original_lid.stl deep_base.stl
+# Giants blue case + red stand: CASE=0.07,0.17,0.50 STAND=0.70,0.10,0.20
 import sys, trimesh, numpy as np, warnings; warnings.filterwarnings("ignore")
 import os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from zrender import render
@@ -11,7 +12,8 @@ def crop(sheet, i):
     x = 24 + c * (480 + 24); y = 24 + r * (320 + 34 + 24) + 34
     return im.crop((x, y, x + 480, y + 320))
 base = trimesh.load(sys.argv[3]); lid = trimesh.load(sys.argv[2])
-WHITE = (0.94, 0.94, 0.95); KEY = (1.0, 0.0, 1.0); GLASS = (0.04, 0.04, 0.06)
+import os
+WHITE = tuple(float(x) for x in os.environ.get("CASE", "0.94,0.94,0.95").split(",")); KEY = (1.0, 0.0, 1.0); GLASS = (0.04, 0.04, 0.06)
 # black glass in the window, screen image area on top of it
 glass = trimesh.creation.box(extents=[89, 61, 0.2]); glass.apply_translation([57.9, 30.6, 2.8])
 act = trimesh.creation.box(extents=[83.5, 55.7, 0.2]); act.apply_translation([57.9, 30.6, 2.95])
@@ -44,7 +46,7 @@ def scene(screen, T, lift, extra, elev, azim, center, scale, title, W=900, H=640
     c2 = Image.new("RGB", (W, H + 44), "white"); c2.paste(im, (0, 44))
     ImageDraw.Draw(c2).text((W / 2, 22), title, font=F, fill=(30, 30, 40), anchor="mm")
     return c2
-DESK = (0.55, 0.40, 0.28); ORANGE = (0.95, 0.5, 0.15)
+DESK = (0.55, 0.40, 0.28); ORANGE = tuple(float(x) for x in os.environ.get("STAND", "0.95,0.5,0.15").split(","))
 def desk(lift_z=0):
     d = trimesh.creation.box(extents=[400, 300, 10]); d.apply_translation([55, 60, -5 + lift_z]); return (d, DESK)
 def stand_parts(tilt, dev):
