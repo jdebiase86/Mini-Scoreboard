@@ -2,7 +2,7 @@
 
 A desk-sized mini scoreboard on a 4.0" ESP32 touch screen. Companion to the
 64x64 LED board in [Scoreboard](https://github.com/jdebiase86/Scoreboard).
-The first board arrived Oct 7, 2026 and Joe said go: firmware is being
+Joe said go Oct 7, 2026 (first board due Fri Oct 9): firmware is being
 built in the stages below.
 
 ## Hardware (ordered, not here yet - Amazon shows one board due Fri Oct 9 again, the other two Oct 20 to Nov 5, 2026; battery and speaker sooner)

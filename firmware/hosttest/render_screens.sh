@@ -29,6 +29,11 @@ void Settings::setPicksFromString(const String& s) {
     if (idx >= 0) picks[npicks++] = idx;
     start = comma + 1;
   }
+  // same order as the board: football, baseball, hockey, basketball
+  for (int i = 1; i < npicks; i++)
+    for (int j = i; j > 0 && leagueSport(TEAMS[picks[j]].league) < leagueSport(TEAMS[picks[j - 1]].league); j--) {
+      int t = picks[j]; picks[j] = picks[j - 1]; picks[j - 1] = t;
+    }
 }
 X
 g++ -std=gnu++17 -O1 -w -DMN_HOST -I shim -I "$LGFX/src" \

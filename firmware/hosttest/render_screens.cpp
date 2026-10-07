@@ -41,14 +41,17 @@ int main() {
   uiJoining("Home Wi-Fi"); save("03_joining");
   uiSetup("Mini-Scoreboard-3F2A", true, "Home Wi-Fi"); save("04_cant_join");
   uiConnected("192.168.1.42"); save("05_connected");
-  uiHome(); save("06_home");
+  uiHome(0); save("06_home");
   uiTeam(settings.picks[0]); save("07_team");
   uiTeam(-1); save("08_auto");
   uiUpdating(40, "0.2"); save("09_updating");
   settings.setPicksFromString("NFL:DAL,CFB:LSU");
-  uiHome(); save("10_home_two");
+  uiHome(0); save("10_home_two");
+  settings.setPicksFromString("NFL:NYG,NHL:NYR,CFB:FLA,MLB:NYY,NBA:NY,NFL:NYJ,MLB:NYM,NHL:NJ");
+  uiHome(0); save("11_home_eight_p1");
+  uiHome(1); save("12_home_eight_p2");
   settings.setPicksFromString("");
-  uiHome(); save("11_no_teams");
-  uiBootHold(3); save("12_boot_hold");
+  uiHome(0); save("13_no_teams");
+  uiBootHold(3); save("14_boot_hold");
   return 0;
 }

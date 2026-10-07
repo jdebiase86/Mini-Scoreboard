@@ -130,8 +130,8 @@ static void handleRoot() {
 
   // teams
   h += String("<section><h2>") + (home ? "Teams" : "2. Your teams") +
-       "</h2><p class=hint>Up to 5. Each gets a tile on the home screen. AUTO goes through them, "
-       "live games first.</p><div class=picked id=picked></div>";
+       "</h2><p class=hint>Up to 10. Each gets a tile on the home screen (more than 5: the rest are on a "
+       "second page, behind the MORE tile). AUTO goes through them, live games first.</p><div class=picked id=picked></div>";
   h += teamSection();
   h += "</section>";
 
@@ -163,7 +163,7 @@ static void handleRoot() {
 const boxes=[...document.querySelectorAll('input[name=t]')],picked=document.getElementById('picked');
 function upd(){const on=boxes.filter(b=>b.checked);
  picked.textContent=on.length?('Picked: '+on.map(b=>b.dataset.n).join(', ')):'Pick at least one team.';
- boxes.forEach(b=>b.disabled=!b.checked&&on.length>=5);
+ boxes.forEach(b=>b.disabled=!b.checked&&on.length>=10);
  document.querySelectorAll('details').forEach(d=>{const n=d.querySelector('.n');if(!n)return;
   const c=[...d.querySelectorAll('input[name=t]')].filter(b=>b.checked).length;n.textContent=c?c+' picked':'';});}
 boxes.forEach(b=>b.addEventListener('change',upd));upd();

@@ -8,7 +8,8 @@ CAP = {"01_splash": "Start-up", "02_setup": "First start: scan to set up", "03_j
        "04_cant_join": "Wrong password / Wi-Fi down", "05_connected": "Connected (8 s, or tap)",
        "06_home": "Home: five teams + AUTO", "07_team": "Tap a team (game screen next stage)",
        "08_auto": "Tap AUTO", "09_updating": "Installing an update", "10_home_two": "Home with two teams",
-       "11_no_teams": "No teams picked yet", "12_boot_hold": "Holding BOOT to reset Wi-Fi"}
+       "11_home_eight_p1": "8 teams: first 5 + MORE", "12_home_eight_p2": "Tap MORE: the other 3 + AUTO",
+       "13_no_teams": "No teams picked yet", "14_boot_hold": "Holding BOOT to reset Wi-Fi"}
 files = sorted(glob.glob(os.path.join(HERE, "out/*.ppm")))
 cols, W, H, pad, cap = 3, 480, 320, 24, 34
 rows = (len(files) + cols - 1) // cols

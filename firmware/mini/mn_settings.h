@@ -5,8 +5,9 @@
 #include <Arduino.h>
 #include "mn_teams.h"
 
-// The home screen has room for five team tiles plus AUTO
-static const int MAX_PICKS = 5;
+// The home screen has six tiles. Up to 5 teams: the teams plus AUTO. More:
+// the first 5 plus a MORE tile, and the rest plus AUTO on a second page.
+static const int MAX_PICKS = 10;
 
 struct TzDef { const char* label; const char* posix; };
 static const TzDef TZS[] = {

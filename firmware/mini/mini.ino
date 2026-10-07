@@ -26,6 +26,7 @@ static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
 static int shownTeam = -1;   // M_TEAM: index into TEAMS, -1 = AUTO
+static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
 static String apName;
 static bool dimmed = false;
 static const uint32_t DIM_AFTER_MS = 60000;
@@ -144,15 +145,20 @@ void setup() {
 static void handleTap(int x, int y) {
   switch (mode) {
     case M_HOME: {
-      int hit = uiHomeHit(x, y);
+      int hit = uiHomeHit(homePage, x, y);
       if (hit < 0) return;
-      uiTileFlash(hit);
+      uiTileFlash(homePage, hit);
+      if (hit == HIT_MORE || hit == HIT_BACK) {
+        homePage = hit == HIT_MORE ? 1 : 0;
+        dirty = true;
+        return;
+      }
       shownTeam = hit == HIT_AUTO ? -1 : settings.picks[hit];
       setMode(M_TEAM);
       break;
     }
     case M_TEAM:
-      if (uiHomeButtonHit(x, y)) setMode(M_HOME);
+      if (uiHomeButtonHit(x, y)) { homePage = 0; setMode(M_HOME); }
       break;
     case M_CONNECTED:
       setMode(M_HOME);   // a tap skips the message
@@ -177,7 +183,7 @@ void loop() {
     portalChanged = false;
     lcdBrightness(level());
     dimmed = false;
-    if (mode == M_HOME || mode == M_TEAM) setMode(M_HOME);
+    if (mode == M_HOME || mode == M_TEAM) { homePage = 0; setMode(M_HOME); }
   }
 
   // installing an update: the progress owns the screen
@@ -236,7 +242,7 @@ void loop() {
       break;
 
     case M_HOME:
-      if (dirty) { uiHome(); dirty = false; }
+      if (dirty) { uiHome(homePage); dirty = false; }
       else uiHomeClock(false);
       break;
 

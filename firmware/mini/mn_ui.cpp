@@ -169,50 +169,105 @@ void uiHomeClock(bool force) {
   text(F_S13, s, 240, 16, C_GREY, C_BG, middle_center);
 }
 
-void uiHome() {
+// What sits in each of a page's six slots: an index into settings.picks,
+// HIT_AUTO or HIT_MORE. Returns how many slots are used.
+int uiHomePages() { return settings.npicks > 5 ? 2 : 1; }
+
+static int pageSlots(int page, int* slot) {
+  int n = 0;
+  if (uiHomePages() == 1) {
+    for (int i = 0; i < settings.npicks; i++) slot[n++] = i;
+    slot[n++] = HIT_AUTO;
+  } else if (page == 0) {
+    for (int i = 0; i < 5; i++) slot[n++] = i;
+    slot[n++] = HIT_MORE;
+  } else {
+    for (int i = 5; i < settings.npicks; i++) slot[n++] = i;
+    slot[n++] = HIT_AUTO;
+  }
+  return n;
+}
+
+static void arrowIcon(int cx, int cy, uint16_t col) {   // a fat right arrow
+  lcd.fillRoundRect(cx - 24, cy - 5, 34, 11, 4, col);
+  lcd.fillTriangle(cx + 4, cy - 17, cx + 4, cy + 17, cx + 24, cy, col);
+}
+
+// back button where "My Teams" sits on the first page
+static const int BK_X0 = 6, BK_Y0 = 3, BK_X1 = 112, BK_Y1 = 29;
+
+void uiHome(int page) {
+  if (page >= uiHomePages()) page = 0;
   lcd.fillScreen(C_BG);
-  text(F_B16, "My Teams", 12, 16, C_WHITE, C_BG, middle_left);
   uiHomeClock(true);
+  if (page == 0) {
+    text(F_B16, "My Teams", 12, 16, C_WHITE, C_BG, middle_left);
+  } else {
+    tile(BK_X0, BK_Y0, BK_X1, BK_Y1, C_TILE, C_EDGE, 13);
+    lcd.fillTriangle(BK_X0 + 12, 16, BK_X0 + 20, 9, BK_X0 + 20, 23, C_WHITE);
+    text(F_B12, "MY TEAMS", BK_X0 + 64, 16, C_WHITE, C_TILE, middle_center);
+    text(F_S13, "More teams", 468, 16, C_GREY, C_BG, middle_right);
+  }
   if (!settings.npicks) {
     centre(F_B24, "Pick your teams", 140, C_WHITE);
     centre(F_M15, "On a phone or computer on your Wi-Fi, go to", 180, C_GREY);
     centre(F_B24, "mini.local", 216, C_YELLOW);
     return;
   }
-  int n = settings.npicks;
-  for (int i = 0; i < n; i++) {
+  int slot[6];
+  int n = pageSlots(page, slot);
+  for (int k = 0; k < n; k++) {
     int x0, y0, x1, y1;
-    tileRect(i, x0, y0, x1, y1);
-    int cx = (x0 + x1) / 2, t = settings.picks[i];
-    tile(x0, y0, x1, y1, C_TILE, C_EDGE);
-    text(F_B36, TEAMS[t].abbr, cx, y0 + 50, C_WHITE, C_TILE, middle_center);   // the logo goes here next
-    text(F_B18, shortName(t), cx, y0 + 102, C_WHITE, C_TILE, middle_center);
-    text(F_S13, LEAGUE_NAMES[TEAMS[t].league], cx, y0 + 124, C_GREY, C_TILE, middle_center);
+    tileRect(k, x0, y0, x1, y1);
+    int cx = (x0 + x1) / 2;
+    if (slot[k] == HIT_AUTO) {
+      tile(x0, y0, x1, y1, C_AUTO_BG, C_AUTO_EDGE, 14, 2);
+      autoIcon(cx, y0 + 50, 26, C_WHITE, 5);
+      text(F_B24, "AUTO", cx, y0 + 98, C_WHITE, C_AUTO_BG, middle_center);
+      text(F_M12, "rotate my teams", cx, y0 + 120, C_AUTO_INK, C_AUTO_BG, middle_center);
+    } else if (slot[k] == HIT_MORE) {
+      tile(x0, y0, x1, y1, C_TILE_HI, C_EDGE, 14, 2);
+      arrowIcon(cx, y0 + 50, C_WHITE);
+      text(F_B24, "MORE", cx, y0 + 98, C_WHITE, C_TILE_HI, middle_center);
+      int extra = settings.npicks - 5;
+      String sub = String(extra) + (extra == 1 ? " more team + AUTO" : " more teams + AUTO");
+      text(F_M12, sub, cx, y0 + 120, C_GREY, C_TILE_HI, middle_center);
+    } else {
+      int t = settings.picks[slot[k]];
+      tile(x0, y0, x1, y1, C_TILE, C_EDGE);
+      text(F_B36, TEAMS[t].abbr, cx, y0 + 50, C_WHITE, C_TILE, middle_center);   // the logo goes here next
+      text(F_B18, shortName(t), cx, y0 + 102, C_WHITE, C_TILE, middle_center);
+      text(F_S13, LEAGUE_NAMES[TEAMS[t].league], cx, y0 + 124, C_GREY, C_TILE, middle_center);
+    }
   }
-  // AUTO goes right after the teams
-  int x0, y0, x1, y1;
-  tileRect(n, x0, y0, x1, y1);
-  int cx = (x0 + x1) / 2;
-  tile(x0, y0, x1, y1, C_AUTO_BG, C_AUTO_EDGE, 14, 2);
-  autoIcon(cx, y0 + 50, 26, C_WHITE, 5);
-  text(F_B24, "AUTO", cx, y0 + 98, C_WHITE, C_AUTO_BG, middle_center);
-  text(F_M12, "rotate my teams", cx, y0 + 120, C_AUTO_INK, C_AUTO_BG, middle_center);
 }
 
-int uiHomeHit(int x, int y) {
-  for (int i = 0; i <= settings.npicks; i++) {
+int uiHomeHit(int page, int x, int y) {
+  if (page > 0 && x < BK_X1 + 16 && y < BK_Y1 + 6) return HIT_BACK;
+  int slot[6];
+  int n = pageSlots(page, slot);
+  for (int k = 0; k < n; k++) {
     int x0, y0, x1, y1;
-    tileRect(i, x0, y0, x1, y1);
-    if (x >= x0 && x < x1 && y >= y0 && y < y1) return i < settings.npicks ? i : HIT_AUTO;
+    tileRect(k, x0, y0, x1, y1);
+    if (x >= x0 && x < x1 && y >= y0 && y < y1) return slot[k];
   }
   return -1;
 }
 
-void uiTileFlash(int hit) {
-  int i = hit == HIT_AUTO ? settings.npicks : hit;
-  int x0, y0, x1, y1;
-  tileRect(i, x0, y0, x1, y1);
-  for (int k = 0; k < 2; k++) lcd.drawRoundRect(x0 + k, y0 + k, x1 - x0 - 2 * k, y1 - y0 - 2 * k, 14 - k, C_WHITE);
+void uiTileFlash(int page, int hit) {
+  if (hit == HIT_BACK) {
+    lcd.drawRoundRect(BK_X0, BK_Y0, BK_X1 - BK_X0, BK_Y1 - BK_Y0, 13, C_WHITE);
+    delay(90);
+    return;
+  }
+  int slot[6];
+  int n = pageSlots(page, slot);
+  for (int k = 0; k < n; k++) {
+    if (slot[k] != hit) continue;
+    int x0, y0, x1, y1;
+    tileRect(k, x0, y0, x1, y1);
+    for (int w = 0; w < 2; w++) lcd.drawRoundRect(x0 + w, y0 + w, x1 - x0 - 2 * w, y1 - y0 - 2 * w, 14 - w, C_WHITE);
+  }
   delay(90);
 }
 
