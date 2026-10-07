@@ -61,10 +61,14 @@ says go.
    plus more: hockey power play, penalty, empty net, overtime/shootout;
    baseball strikeout, walk-off, double play, bases loaded, inning card;
    basketball runs, buzzer beater, dunk, and-one.
-   Sound (Joe wants it, Oct 7): 8 ohm 2 W 20 x 30 mm cavity speaker with a 1.25 mm plug
-   in the board's speaker socket (IO26 DAC, IO4 amp enable per LCDwiki).
-   Sits at the USB-C end, battery moves 11 mm toward the far end, sound
-   holes in the back (case/case_speaker_option.png). Mute and quiet hours.
+   Sound (Joe wants it, Oct 7): CQRobot enclosed (cavity) speaker, 8 ohm,
+   2 W RMS (3 W max), front-firing, 35 x 25 x 6.8 mm plus a 1 mm lip and a
+   small wire tab, JST 1.25 mm 2-pin plug on an 8 cm lead (red +), sold as
+   a pair. Plugs into the board's speaker socket (IO26 DAC, IO4 amp enable
+   per LCDwiki). Sits face-down at the USB-C end over a patch of sound holes
+   in the back (case/case_speaker_option.png shows the earlier 20 x 30
+   pocket; to redo at 25 x 35, battery slides about 15 mm toward the far
+   end). Volume capped just under max; mute and quiet hours.
 9. Animations redrawn smooth with the sharp logos (not the LED pixel ones).
    Start with touchdown, field goal, goal, home run and win.
 10. Logos: only the favourites' logos (plus a few opponent logos, fetched
