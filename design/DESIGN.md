@@ -84,3 +84,8 @@ says go.
 - mini_redzone_opp.png: our RED ZONE pop-up next to the two options for
   theirs (A "DEFENSE!" was picked).
 - mock_mini.py draws them all; see the top of the file.
+
+## Device renders
+design/device_renders.png (Oct 7): the deeper buttons case with the mock-up
+screens on it - on a desk stand (orange stand is a placeholder, not designed
+yet) and lying flat. Drawn by case/scene.py.
