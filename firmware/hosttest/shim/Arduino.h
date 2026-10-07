@@ -6,6 +6,7 @@
 #include <math.h>
 #include <time.h>
 #include <string>
+#include <stdlib.h>
 
 #ifndef DEG_TO_RAD
 #define DEG_TO_RAD 0.017453292519943295f
@@ -27,10 +28,17 @@ class String : public std::string {
   int lastIndexOf(char c) const { auto p = rfind(c); return p == npos ? -1 : (int)p; }
   int lastIndexOf(char c, int from) const { if (from < 0) return -1; auto p = rfind(c, from); return p == npos ? -1 : (int)p; }
   int indexOf(char c, int from = 0) const { auto p = find(c, from); return p == npos ? -1 : (int)p; }
+  int indexOf(const String& s) const { auto p = find(s); return p == npos ? -1 : (int)p; }
+  void trim() { erase(0, find_first_not_of(" \t\r\n")); erase(find_last_not_of(" \t\r\n") + 1); }
+  long toInt() const { return atol(c_str()); }
+  String& operator+=(const String& o) { append(o); return *this; }
+  String& operator+=(const char* o) { append(o); return *this; }
+  String& operator+=(char c) { push_back(c); return *this; }
 };
 inline String operator+(const String& a, const char* b) { return String(std::string(a) + b); }
 inline String operator+(const char* a, const String& b) { return String(a + std::string(b)); }
 inline String operator+(const String& a, const String& b) { return String(std::string(a) + std::string(b)); }
+inline String operator+(const String& a, char b) { return String(std::string(a) + b); }
 
 uint32_t millis();
 void delay(uint32_t ms);

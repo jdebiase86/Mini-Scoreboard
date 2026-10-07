@@ -5,7 +5,8 @@
   "Minimal SPIFFS" (two 1.9 MB program slots for updates over Wi-Fi).
 - mini_hw_test/: the hardware test (one file, LovyanGFX only).
 - hosttest/: draws the real screens on a computer (render_screens.sh ->
-  design/mini_stage1.png). Needs libsdl2-dev and LovyanGFX.
+  design/mini_stage1.png) and the real setup page (page_host.sh ->
+  out/setup.html and phone-sized pictures). Needs libsdl2-dev and LovyanGFX.
 
 Build:
 
