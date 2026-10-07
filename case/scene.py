@@ -17,7 +17,7 @@ glass = trimesh.creation.box(extents=[89, 61, 0.2]); glass.apply_translation([57
 act = trimesh.creation.box(extents=[83.5, 55.7, 0.2]); act.apply_translation([57.9, 30.6, 2.95])
 AC = np.array([[57.9 - 41.75, 30.6 + 27.85, 3.05], [57.9 + 41.75, 30.6 + 27.85, 3.05], [57.9 - 41.75, 30.6 - 27.85, 3.05]])  # TL, TR, BL
 def stand_T(tilt=17):
-    T = RM(np.radians(90 + tilt), [1, 0, 0], [0, 0, 0])       # front faces -y, leaning back
+    T = RM(np.radians(90 - tilt), [1, 0, 0], [0, 0, 0])       # front faces -y and up, top leaning back
     return T
 def place(mesh, T, lift):
     m = mesh.copy(); m.apply_transform(T); m.apply_translation([0, 0, lift]); return m
@@ -47,11 +47,15 @@ def scene(screen, T, lift, extra, elev, azim, center, scale, title, W=900, H=640
 DESK = (0.55, 0.40, 0.28); ORANGE = (0.95, 0.5, 0.15)
 def desk(lift_z=0):
     d = trimesh.creation.box(extents=[400, 300, 10]); d.apply_translation([55, 60, -5 + lift_z]); return (d, DESK)
-def stand_parts(tilt=17):
-    # simple placeholder cradle: base plate, front lip, angled back support
-    p = trimesh.creation.box(extents=[80, 40, 4]); p.apply_translation([55.5, 2, 2])
-    lip = trimesh.creation.box(extents=[80, 4, 9]); lip.apply_translation([55.5, -22, 6])
-    back = trimesh.creation.box(extents=[70, 4, 42]); back.apply_transform(RM(np.radians(-tilt), [1, 0, 0], [0, 0, 0])); back.apply_translation([55.5, 14, 22])
+def stand_parts(tilt, dev):
+    # simple placeholder cradle: base plate, front lip, back support leaning with the device
+    v = dev.vertices
+    front = v[v[:, 2] < 8][:, 1].min()
+    band = v[(v[:, 2] > 25) & (v[:, 2] < 35)]; backy = band[:, 1].max()
+    p = trimesh.creation.box(extents=[80, 50, 4]); p.apply_translation([55.5, front + 20, 2])
+    lip = trimesh.creation.box(extents=[80, 4, 9]); lip.apply_translation([55.5, front - 2.2, 4.5])
+    back = trimesh.creation.box(extents=[70, 4, 40]); back.apply_transform(RM(np.radians(-tilt), [1, 0, 0], [0, 0, 0]))
+    back.apply_translation([55.5, backy + 2.2 - 30 * np.tan(np.radians(tilt)) + 20 * np.tan(np.radians(tilt)), 20])
     return [(p, ORANGE), (lip, ORANGE), (back, ORANGE)]
 T = stand_T(17)
 # device sits on the stand plate (top of plate z=4); lift so lowest point rests at z=4
@@ -60,7 +64,8 @@ lift = 4.5 - lowest
 # shift device so its back rests near the support: compute y range
 yy = trimesh.transform_points(np.vstack([base.vertices]), T)[:, 1]
 print("device y range", yy.min(), yy.max())
-extra = [desk()] + stand_parts(17)
+dev = trimesh.util.concatenate([place(base, T, lift), place(lid, T, lift)])
+extra = [desk()] + stand_parts(17, dev)
 home = crop("mini_mockups.png", 0); live = crop("mini_mockups.png", 1); td = crop("mini_mockups.png", 4)
 defense = crop("mini_redzone_opp.png", 1); final = crop("mini_mockups.png", 2)
 cen = (55, 0, 40)
