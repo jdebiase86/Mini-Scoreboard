@@ -42,3 +42,5 @@ board's BAT plug (left "-", right "+" seen from the back, plug at the bottom).
 Speaker option (Oct 7): python3 deepen.py <buttons base> base_spk.stl 10 67 36 66.5 speaker
 puts a 20 x 30 mm cavity speaker pocket at the USB-C end with a grille of
 1.8 mm holes in the back, and moves the battery 11 mm toward the switch end.
+
+Oct 7: switch dropped. deepen.py no longer cuts the switch slot unless SWITCH=1.

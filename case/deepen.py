@@ -56,8 +56,10 @@ if SPK:
             if (hx - SX) ** 2 / 8.0 ** 2 + (hy - SY) ** 2 / 12.5 ** 2 > 1: continue
             c = trimesh.creation.cylinder(radius=0.9, height=6, sections=16); c.apply_translation([hx, hy, fz - 1])
             acc = acc - M(c)
-sw = trimesh.creation.box(extents=[8, 9.5, 4.5]); sw.apply_translation([113.5, 30.58, ZC - H / 2 - 0.5])
-acc = acc - M(sw)
+import os
+if os.environ.get("SWITCH", "0") == "1":   # Oct 7: Joe dropped the on/off switch; SWITCH=1 puts the slot back
+    sw = trimesh.creation.box(extents=[8, 9.5, 4.5]); sw.apply_translation([113.5, 30.58, ZC - H / 2 - 0.5])
+    acc = acc - M(sw)
 mm = acc.to_mesh()
 out = trimesh.Trimesh(mm.vert_properties[:, :3], mm.tri_verts)
 out.export(OUT)

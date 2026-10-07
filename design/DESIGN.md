@@ -63,7 +63,7 @@ says go.
    basketball runs, buzzer beater, dunk, and-one.
    Sound (Joe wants it, Oct 7): 8 ohm 2 W 20 x 30 mm cavity speaker with a 1.25 mm plug
    in the board's speaker socket (IO26 DAC, IO4 amp enable per LCDwiki).
-   Sits at the USB-C end, battery moves 11 mm toward the switch end, sound
+   Sits at the USB-C end, battery moves 11 mm toward the far end, sound
    holes in the back (case/case_speaker_option.png). Mute and quiet hours.
 9. Animations redrawn smooth with the sharp logos (not the LED pixel ones).
    Start with touchdown, field goal, goal, home run and win.
@@ -81,16 +81,20 @@ says go.
      protected, JST 1.25 mm 2-pin plug (matches the board's BAT plug, to be
      confirmed with a ruler photo). 7 to 9 hours. Ordered; full details and
      the polarity check in design/BATTERY.md. Closed case about 24 mm.
-   - Small on/off slide switch on the side edge (the board has none).
-     Charges through the board's USB-C while running.
+   - No on/off switch (Oct 7, Joe: "if it dies it dies, plug it back in").
+     The battery's protection circuit cuts off before it's harmed. Charges
+     through the board's USB-C while running. Instead: dim / battery saver
+     mode (screen dims, slower checks, screen sleeps, tap to wake), set from
+     the screen and maybe the back "B" tab (BOOT button, IO0, readable once
+     running). A battery level icon if the board can measure the battery.
    - Case: the MakerWorld "ESP32-32E 4.0 CYD" enclosure Joe found, buttons
      version (flex tabs press RESET and BOOT), with the base made 10 mm
      deeper (case/deepen.py, posts grow to match); lid unchanged, M3x6 screws. It must still sit
      on a desk stand (match that model's orange stand or a clip-on one).
    - Screen dims after about a minute when idle and wakes on a tap.
-   - Before buying the battery: close-up photo of the board's BAT plug
-     (plug sizes and wire order vary; reversed wires can damage the board).
-     Draw the case for Joe to OK before printing.
+   - Before the battery's first plug-in: close-up photo of the board's BAT
+     plug next to a ruler and the polarity check in design/BATTERY.md.
+     Draw the final case for Joe to OK before printing.
 12. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
 
