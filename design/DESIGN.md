@@ -38,12 +38,21 @@ says go.
    ALL COLLEGE and FULL GAME; the board's current mode is outlined and the
    bottom line says what it is showing. Gift units never show it. The big
    board needs a small update to accept these commands. Built last.
-7. Animations redrawn smooth with the sharp logos (not the LED pixel ones).
+7. Play animations (Oct 7, Joe loves them all; mock-ups design/mini_plays.png):
+   our interception "PICKED OFF!", our fumble recovery "FUMBLE!" (team ball),
+   their third-down stop "STOPPED!" (stop sign), turnover on downs
+   "STONEWALLED!" (brick wall), sack "SACKED!" (burst), they punt
+   "PUNT-ASTIC!", we convert on 4th "WENT FOR IT!", we punt "NO PUNT
+   INTENDED" (dull grey), we turn it over "TURNOVER" (caution tape, like
+   DEFENSE!). Bright team colours = good news, yellow tape = trouble.
+   Detected from ESPN's last-play text and down/possession changes; a play
+   can be missed if two happen between checks. Could go on the LED board too.
+8. Animations redrawn smooth with the sharp logos (not the LED pixel ones).
    Start with touchdown, field goal, goal, home run and win.
-8. Logos: only the favourites' logos (plus a few opponent logos, fetched
+9. Logos: only the favourites' logos (plus a few opponent logos, fetched
    when needed) are stored on the mini, downloaded from ESPN and shrunk.
    Same files as Scoreboard/assets/logos.
-9. Power and case:
+10. Power and case:
    - Board: the 4.0" ESP32-32E display (iPistBit listing, ST7796U screen chip,
      same board as the Hosyond with ST7796S; support both). Joe has three
      coming (his, a gift unit, a spare).
@@ -64,7 +73,7 @@ says go.
    - Before buying the battery: close-up photo of the board's BAT plug
      (plug sizes and wire order vary; reversed wires can damage the board).
      Draw the case for Joe to OK before printing.
-10. Its own repo (this one) so its update releases never get in the way of
+11. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
 
 ## Technical notes for later
@@ -83,6 +92,7 @@ says go.
   red zone.
 - mini_redzone_opp.png: our RED ZONE pop-up next to the two options for
   theirs (A "DEFENSE!" was picked).
+- mini_plays.png: the nine play animations (defense, turnovers, punts).
 - mock_mini.py draws them all; see the top of the file.
 
 ## Device renders

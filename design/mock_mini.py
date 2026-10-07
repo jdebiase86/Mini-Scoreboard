@@ -4,6 +4,7 @@ Scoreboard repo (assets/logos). Needs Pillow and the Inter font.
     python3 mock_mini.py        -> mini_mockups.png (the six main screens)
     python3 mock_mini.py rz     -> mini_redzone.png (our team in the red zone)
     python3 mock_mini.py opp    -> mini_redzone_opp.png (red zone pop-ups, ours vs theirs)
+    python3 mock_mini.py plays  -> mini_plays.png (defense, turnover and punt animations)
 
 LOGOS points at Scoreboard/assets/logos (default: a Scoreboard checkout next
 to this repo). FONTS points at the folder holding Inter-Bold.otf etc.
@@ -328,6 +329,148 @@ def remote():
     text(d, 184, 299, "AUTO  Giants 21-17 Eagles", font(FB, 14), WHITE, "lm")
     return finish(img, "6_remote")
 
+# ---------------------------------------------------------- play animations
+BLUE_T, RED_T = (11, 34, 101), (167, 25, 48)
+
+def fit_font(d, s, maxw, start=56, path=FB):
+    size = start
+    while size > 20 and d.textlength(s, font=font(path, size)) / S > maxw: size -= 2
+    return font(path, size)
+
+def big_word(d, s, y, col=WHITE, maxw=450, start=56):
+    f = fit_font(d, s, maxw, start)
+    text(d, 243, y + 3, s, f, (0, 0, 0), "mm"); text(d, 240, y, s, f, col, "mm")
+
+def sub_pill(d, s, y=294, fg=YELLOW, bg=(0, 0, 0)):
+    f = font(FB, 15); w = d.textlength(s, font=f) / S + 36
+    rbox(d, 240 - w / 2, y - 16, 240 + w / 2, y + 16, bg, r=16)
+    text(d, 240, y, s, f, fg, "mm")
+
+def glow_at(img, cx, cy, r=90, a=120):
+    g = Image.new("RGBA", img.size, (0, 0, 0, 0)); gd = ImageDraw.Draw(g)
+    gd.ellipse(R(cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, a))
+    img.alpha_composite(g.filter(ImageFilter.GaussianBlur(18 * S)))
+
+def rays(d, cx, cy, cols, n=24):
+    for k in range(n):
+        a0 = k * 360 / n
+        d.pieslice(R(cx - 460, cy - 460, cx + 460, cy + 460), a0, a0 + 360 / n, fill=cols[k % 2])
+
+def stripes(d, cols, w=34, slope=0.6):
+    for k in range(-12, 30):
+        x = k * w
+        d.polygon([(x * S, 0), ((x + w) * S, 0), ((x + w - H * slope) * S, H * S), ((x - H * slope) * S, H * S)], fill=cols[k % 2])
+
+def picked_off():
+    img, d = new(); stripes(d, [BLUE_T, (20, 50, 140)])
+    # the pass: dotted arc cut off by the logo
+    for t in range(0, 14):
+        x = 30 + t * 14; y = 200 - math.sin(t / 13 * math.pi) * 120
+        d.ellipse(R(x - 3, y - 3, x + 3, y + 3), fill=(255, 255, 255))
+    glow_at(img, 260, 115); paste_logo(img, "nfl/nyg.png", 260, 115, 140)
+    d = ImageDraw.Draw(img); big_word(d, "PICKED OFF!", 236)
+    sub_pill(d, "INTERCEPTION - GIANTS BALL AT PHI 35"); return finish(img, "p_int")
+
+def fumble():
+    img, d = new(); rays(d, 240, 110, [RED_T, BLUE_T])
+    glow_at(img, 240, 110); paste_logo(img, "nfl/nyg.png", 240, 110, 130)
+    d = ImageDraw.Draw(img)
+    for i, (bx, by, a) in enumerate(((70, 70, 0.6), (95, 150, 1.0), (400, 160, 0.8))):
+        football(d, bx, by, 34 * a + 10, 20 * a + 6)
+    big_word(d, "FUMBLE!", 222, start=60)
+    sub_pill(d, "GIANTS BALL - RECOVERED AT THE NYG 40", y=284); return finish(img, "p_fum")
+
+def stopped():
+    img, d = new(); d.rectangle(R(0, 0, W, H), fill=BLUE_T)
+    cx, cy, r = 240, 128, 112
+    pts = [((cx + r * math.cos(math.radians(22.5 + 45 * k))) * S, (cy + r * math.sin(math.radians(22.5 + 45 * k))) * S) for k in range(8)]
+    d.polygon(pts, fill=(255, 255, 255))
+    pts2 = [((cx + (r - 8) * math.cos(math.radians(22.5 + 45 * k))) * S, (cy + (r - 8) * math.sin(math.radians(22.5 + 45 * k))) * S) for k in range(8)]
+    d.polygon(pts2, fill=(205, 30, 40))
+    text(d, cx, cy - 6, "STOPPED!", fit_font(d, "STOPPED!", 180, 44), WHITE, "mm")
+    text(d, cx, cy + 34, "3RD DOWN", font(FB, 16), WHITE, "mm")
+    paste_logo(img, "nfl/nyg.png", 62, 270, 54)
+    d = ImageDraw.Draw(img); sub_pill(d, "EAGLES FACE 4TH & 3", y=286); return finish(img, "p_stop")
+
+def stonewalled():
+    img, d = new(); d.rectangle(R(0, 0, W, H), fill=(60, 64, 76))
+    bh, bw = 26, 64
+    for row in range(int(H / bh) + 1):
+        off = (row % 2) * bw / 2
+        for col in range(-1, int(W / bw) + 2):
+            x = col * bw - off; y = row * bh
+            c = BLUE_T if (row + col) % 3 else (24, 52, 130)
+            d.rectangle(R(x + 2, y + 2, x + bw - 2, y + bh - 2), fill=c)
+    glow_at(img, 240, 105, 85, 90); paste_logo(img, "nfl/nyg.png", 240, 105, 120)
+    d = ImageDraw.Draw(img); big_word(d, "STONEWALLED!", 222)
+    sub_pill(d, "TURNOVER ON DOWNS - GIANTS BALL", y=284); return finish(img, "p_wall")
+
+def sacked():
+    img, d = new(); rays(d, 240, 150, [BLUE_T, RED_T], 32)
+    # impact burst
+    cx, cy = 240, 150; pts = []
+    for k in range(28):
+        rr = 205 if k % 2 == 0 else 158
+        a = math.radians(k * 360 / 28)
+        pts.append(((cx + rr * math.cos(a)) * S, (cy + rr * 0.62 * math.sin(a)) * S))
+    d.polygon(pts, fill=(255, 220, 40))
+    paste_logo(img, "nfl/nyg.png", 240, 104, 70)
+    d = ImageDraw.Draw(img)
+    f = fit_font(d, "SACKED!", 250, 62)
+    text(d, 240, 172, "SACKED!", f, BLUE_T, "mm")
+    sub_pill(d, "EAGLES LOSE 8 YARDS", y=286); return finish(img, "p_sack")
+
+def puntastic():
+    img, d = new(); rays(d, 240, 300, [BLUE_T, (22, 50, 135)])
+    # the kick: dotted arc away from us
+    for t in range(0, 18):
+        x = 60 + t * 21; y = 200 - math.sin(t / 17 * math.pi) * 150
+        d.ellipse(R(x - 2.5, y - 2.5, x + 2.5, y + 2.5), fill=(255, 255, 255, 255))
+    football(d, 420, 120, 30, 18)
+    paste_logo(img, "nfl/nyg.png", 240, 110, 96)
+    d = ImageDraw.Draw(img); big_word(d, "PUNT-ASTIC!", 222)
+    sub_pill(d, "3 AND OUT - EAGLES HAVE TO PUNT", y=284); return finish(img, "p_puntastic")
+
+def went_for_it():
+    img, d = new(); stripes(d, [(20, 110, 60), (28, 140, 74)], 40, 0.0)
+    pill(d, 240, 30, "4TH & 1", (0, 0, 0), size=18, anchor="c") if False else None
+    rbox(d, 190, 22, 290, 52, (0, 0, 0), r=15); text(d, 240, 37, "4TH & 1", font(FB, 17), YELLOW, "mm")
+    glow_at(img, 240, 125, 80, 90); paste_logo(img, "nfl/nyg.png", 240, 125, 120)
+    d = ImageDraw.Draw(img); big_word(d, "WENT FOR IT!", 228)
+    sub_pill(d, "AND MADE IT - FIRST DOWN GIANTS", y=286); return finish(img, "p_went")
+
+def no_punt():
+    img, d = new(); d.rectangle(R(0, 0, W, H), fill=(48, 50, 58))
+    for t in range(0, 18):
+        x = 60 + t * 21; y = 190 - math.sin(t / 17 * math.pi) * 110
+        d.ellipse(R(x - 2, y - 2, x + 2, y + 2), fill=(120, 124, 136))
+    football(d, 420, 130, 26, 15)
+    paste_logo(img, "nfl/nyg.png", 240, 105, 80)
+    lg = Image.new("RGBA", img.size, (48, 50, 58, 110)); img.alpha_composite(lg)   # logo dimmed
+    d = ImageDraw.Draw(img)
+    f = fit_font(d, "NO PUNT INTENDED", 430, 44)
+    text(d, 240, 212, "NO PUNT INTENDED", f, (215, 218, 226), "mm")
+    text(d, 240, 246, "4th & 7 at their own 28", font(FS, 15), (150, 156, 170), "mm")
+    sub_pill(d, "GIANTS PUNT 46 YARDS", y=288, fg=(220, 222, 230), bg=(28, 30, 36)); return finish(img, "p_nopunt")
+
+def turnover_bad():
+    img = live(rz=False, opp=False)
+    img = img.convert("RGBA").resize((W * S, H * S), Image.LANCZOS)
+    ov = Image.new("RGBA", img.size, (0, 0, 0, 150)); img.alpha_composite(ov); d = ImageDraw.Draw(img)
+    d.rectangle(R(0, 108, W, 212), fill=(16, 16, 18))
+    for y0 in (100, 212):
+        d.rectangle(R(0, y0, W, y0 + 10), fill=(250, 200, 20))
+        for k in range(-1, 26):
+            x = k * 20
+            d.polygon([(x * S, (y0 + 10) * S), ((x + 10) * S, y0 * S), ((x + 18) * S, y0 * S), ((x + 8) * S, (y0 + 10) * S)], fill=(16, 16, 18))
+    tx, ty = 62, 160
+    d.polygon([(tx * S, (ty - 34) * S), ((tx + 38) * S, (ty + 30) * S), ((tx - 38) * S, (ty + 30) * S)], fill=(250, 200, 20))
+    text(d, tx, ty + 8, "!", font(FB, 40), (16, 16, 18), "mm")
+    text(d, 290, 146, "TURNOVER", font(FB, 48), (250, 200, 20), "mm")
+    paste_logo(img, "nfl/phi.png", 150, 189, 22)
+    text(d, 300, 189, "Picked off - Eagles ball at the NYG 30", font(FB, 15), WHITE, "mm")
+    return finish(img, "p_turnover")
+
 if len(sys.argv) > 1 and sys.argv[1] == "rz":
     shots = [("1. Home (Giants in red zone)", home(rz=True)), ("2. Red zone alert (3 sec)", live(rz=True, alert=True)),
              ("3. Game screen in red zone", live(rz=True))]
@@ -336,6 +479,11 @@ elif len(sys.argv) > 1 and sys.argv[1] == "opp":
     shots = [("Ours: RED ZONE (good)", live(rz=True, alert=True)), ("Theirs, option A: DEFENSE!", live(rz=True, opp=True, bad="defense")),
              ("Theirs, option B: UH OH...", live(rz=True, opp=True, bad="uhoh"))]
     name = "mini_redzone_opp.png"
+elif len(sys.argv) > 1 and sys.argv[1] == "plays":
+    shots = [("1. Interception (ours)", picked_off()), ("2. Fumble recovery (ours)", fumble()), ("3. Third-down stop", stopped()),
+             ("4. Turnover on downs", stonewalled()), ("5. Sack", sacked()), ("6. They punt", puntastic()),
+             ("7. We go for it and make it", went_for_it()), ("8. We punt", no_punt()), ("9. We turn it over", turnover_bad())]
+    name = "mini_plays.png"
 else:
     shots = [("1. Home", home()), ("2. Live game", live()), ("3. Final (Auto on)", final()),
              ("4. Upcoming game", upcoming()), ("5. Touchdown animation", anim()), ("6. Big board remote", remote())]
