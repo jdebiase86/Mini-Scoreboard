@@ -5,7 +5,7 @@ A desk-sized mini scoreboard on a 4.0" ESP32 touch screen. Companion to the
 Design only so far: no firmware is written until the board arrives and Joe
 says go.
 
-## Hardware (ordered, not here yet)
+## Hardware (ordered, not here yet - all three boards now due Oct 20 to Nov 5, 2026; battery and speaker sooner)
 - Hosyond 4.0" ESP32 display (Amazon B0FGJJ24S1): ESP32-32E (ESP32-D0WD-V3,
   dual core 240 MHz), 520 KB RAM, no PSRAM, 4 MB flash.
 - 480x320 TN TFT, ST7796S over 4-line SPI. Resistive touch (firm press), so
