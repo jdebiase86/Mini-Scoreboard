@@ -61,7 +61,7 @@ says go.
    plus more: hockey power play, penalty, empty net, overtime/shootout;
    baseball strikeout, walk-off, double play, bases loaded, inning card;
    basketball runs, buzzer beater, dunk, and-one.
-   Sound: optional 8 ohm 2 W 20 x 30 mm cavity speaker with a 1.25 mm plug
+   Sound (Joe wants it, Oct 7): 8 ohm 2 W 20 x 30 mm cavity speaker with a 1.25 mm plug
    in the board's speaker socket (IO26 DAC, IO4 amp enable per LCDwiki).
    Sits at the USB-C end, battery moves 11 mm toward the switch end, sound
    holes in the back (case/case_speaker_option.png). Mute and quiet hours.
