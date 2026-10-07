@@ -47,12 +47,28 @@ says go.
    DEFENSE!). Bright team colours = good news, yellow tape = trouble.
    Detected from ESPN's last-play text and down/possession changes; a play
    can be missed if two happen between checks. Could go on the LED board too.
-8. Animations redrawn smooth with the sharp logos (not the LED pixel ones).
+8. Game screen extras (Oct 7, mock-ups design/mini_game_extras.png):
+   win chance bar under the field (Joe loves it); drive tracker - three
+   options drawn (A line that alternates play/drive, B play pop-up over the
+   buttons, C drive drawn on the field with play left and drive right),
+   waiting on Joe's pick; close game alert (late, within one score);
+   tap the score for stats (Joe is fine giving that tap up if needed).
+   Other sports: everything the LED board does (hockey goal and
+   intermission, baseball run/home run/grand slam, basketball quarter card
+   and three, kickoff, quarter/halftime, field goal, flag, first down, win)
+   plus more: hockey power play, penalty, empty net, overtime/shootout;
+   baseball strikeout, walk-off, double play, bases loaded, inning card;
+   basketball runs, buzzer beater, dunk, and-one.
+   Sound: optional 8 ohm 2 W 20 x 30 mm cavity speaker with a 1.25 mm plug
+   in the board's speaker socket (IO26 DAC, IO4 amp enable per LCDwiki).
+   Sits at the USB-C end, battery moves 11 mm toward the switch end, sound
+   holes in the back (case/case_speaker_option.png). Mute and quiet hours.
+9. Animations redrawn smooth with the sharp logos (not the LED pixel ones).
    Start with touchdown, field goal, goal, home run and win.
-9. Logos: only the favourites' logos (plus a few opponent logos, fetched
+10. Logos: only the favourites' logos (plus a few opponent logos, fetched
    when needed) are stored on the mini, downloaded from ESPN and shrunk.
    Same files as Scoreboard/assets/logos.
-10. Power and case:
+11. Power and case:
    - Board: the 4.0" ESP32-32E display (iPistBit listing, ST7796U screen chip,
      same board as the Hosyond with ST7796S; support both). Joe has three
      coming (his, a gift unit, a spare).
@@ -73,7 +89,7 @@ says go.
    - Before buying the battery: close-up photo of the board's BAT plug
      (plug sizes and wire order vary; reversed wires can damage the board).
      Draw the case for Joe to OK before printing.
-11. Its own repo (this one) so its update releases never get in the way of
+12. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
 
 ## Technical notes for later
@@ -93,6 +109,8 @@ says go.
 - mini_redzone_opp.png: our RED ZONE pop-up next to the two options for
   theirs (A "DEFENSE!" was picked).
 - mini_plays.png: the nine play animations (defense, turnovers, punts).
+- mini_game_extras.png: win chance bar, drive tracker options A/B/C, close
+  game alert, stats page.
 - mock_mini.py draws them all; see the top of the file.
 
 ## Device renders

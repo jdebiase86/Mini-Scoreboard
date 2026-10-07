@@ -5,6 +5,7 @@ Scoreboard repo (assets/logos). Needs Pillow and the Inter font.
     python3 mock_mini.py rz     -> mini_redzone.png (our team in the red zone)
     python3 mock_mini.py opp    -> mini_redzone_opp.png (red zone pop-ups, ours vs theirs)
     python3 mock_mini.py plays  -> mini_plays.png (defense, turnover and punt animations)
+    python3 mock_mini.py game   -> mini_game_extras.png (win chance bar, drive tracker options, close game, stats)
 
 LOGOS points at Scoreboard/assets/logos (default: a Scoreboard checkout next
 to this repo). FONTS points at the folder holding Inter-Bold.otf etc.
@@ -165,20 +166,20 @@ def teams_row(d, img, away, home_, ascore, hscore, a_dim=False, h_dim=False):
         text(d, 312, 96, hscore, font(FB, 62), DIM if h_dim else WHITE, "mm")
 
 # ---------------------------------------------------------- live game
-def live(rz=False, alert=False, opp=False, bad=None):
+def live(rz=False, alert=False, opp=False, bad=None, extra=None, line=None, q="3RD", clock="4:12", ascore="17", hscore="21", down="2nd & 6"):
     img, d = new()
     pill(d, 10, 7, "LIVE", RED, size=12)
     text(d, 62, 17, "NFL  Week 5", font(FS, 13), GREY, "lm")
     if not rz: text(d, 470, 17, "FOX", font(FB, 13), GREY, "rm")
-    teams_row(d, img, dict(logo="nfl/phi.png", name="Eagles 3-1"), dict(logo="nfl/nyg.png", name="Giants 3-1"), "17", "21")
+    teams_row(d, img, dict(logo="nfl/phi.png", name="Eagles 3-1"), dict(logo="nfl/nyg.png", name="Giants 3-1"), ascore, hscore)
     if rz: pill(d, 470, 7, "RED ZONE", RED, size=12, anchor="r")
-    text(d, 240, 70, "3RD", font(FS, 13), RED if rz else GREY, "mm")
-    text(d, 240, 94, "4:12", font(FB, 28), RED if rz else WHITE, "mm")
+    text(d, 240, 70, q, font(FS, 13), RED if rz else GREY, "mm")
+    text(d, 240, 94, clock, font(FB, 28), RED if rz else WHITE, "mm")
     for side, n in ((168, 2), (312, 3)):
         for k in range(3):
             d.rounded_rectangle(R(side - 22 + k * 16, 130, side - 10 + k * 16, 134), 2 * S, fill=YELLOW if k < n else DIM)
     football(d, 168 if opp else 312, 150)   # who has the ball
-    text(d, 240, 122, "1st & Goal" if rz else "2nd & 6", font(FB, 16), RED if rz else YELLOW, "mm")
+    text(d, 240, 122, "1st & Goal" if rz else down, font(FB, 16), RED if rz else YELLOW, "mm")
     text(d, 240, 142, ("at NYG 8" if opp else "at PHI 8") if rz else "at PHI 34", font(FS, 12), GREY, "mm")
     # field: away (PHI) end zone left, home (NYG) right; Giants attack left
     fx0, fx1, fy0, fy1 = 12, 468, 184, 222
@@ -203,8 +204,11 @@ def live(rz=False, alert=False, opp=False, bad=None):
     bx = gx1 - 8 * yd if opp else gx0 + (8 if rz else 34) * yd
     d.line(R(bx, fy0, bx, fy1), fill=(80, 150, 255), width=2 * S)
     football(d, bx, (fy0 + fy1) / 2, 16, 10)
-    text(d, 240, 240, ("Eagles pass for 19 yards to the NYG 8" if opp else "Pass complete for 26 yards to the PHI 8") if rz else "Run up the middle for 4 yards", font(FR, 12), GREY, "mm")
+    if line is None:
+        text(d, 240, 240, ("Eagles pass for 19 yards to the NYG 8" if opp else "Pass complete for 26 yards to the PHI 8") if rz else "Run up the middle for 4 yards", font(FR, 12), GREY, "mm")
     game_bottom(d)
+    if extra:
+        d = extra(img, d, dict(fx0=fx0, fx1=fx1, fy0=fy0, fy1=fy1, gx0=gx0, gx1=gx1, yd=yd, bx=bx))
     if alert:
         ov = Image.new("RGBA", img.size, (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
         od.rectangle(R(0, 0, W, H), fill=(0, 0, 0, 120))
@@ -471,6 +475,83 @@ def turnover_bad():
     text(d, 300, 189, "Picked off - Eagles ball at the NYG 30", font(FB, 15), WHITE, "mm")
     return finish(img, "p_turnover")
 
+# ---------------------------------------------------------- game screen extras
+TEAL = (0, 76, 84)
+def win_bar(d, y=229, away_pct=38):
+    x0, x1 = 12, 468; xm = x0 + (x1 - x0) * away_pct / 100
+    d.rounded_rectangle(R(x0, y, x1, y + 12), 6 * S, fill=BLUE_T)
+    d.rounded_rectangle(R(x0, y, xm + 6, y + 12), 6 * S, fill=TEAL)
+    d.rectangle(R(xm - 1, y, xm + 1, y + 12), fill=WHITE)
+    text(d, x0 + 8, y + 6, "%d%%" % away_pct, font(FB, 9), WHITE, "lm")
+    text(d, x1 - 8, y + 6, "%d%%" % (100 - away_pct), font(FB, 9), WHITE, "rm")
+    text(d, 240, y + 6, "WIN CHANCE", font(FB, 8), (200, 205, 220), "mm")
+
+def opt_a():
+    def ex(img, d, c):
+        win_bar(d)
+        text(d, 240, 253, "This drive: 6 plays, 48 yards, 3:12", font(FS, 12), GREY, "mm")
+        d.ellipse(R(226, 291, 232, 297), fill=DIM); d.ellipse(R(248, 291, 254, 297), fill=WHITE)
+        return d
+    return live(line="", extra=ex)
+
+def opt_b():
+    def ex(img, d, c):
+        win_bar(d)
+        rbox(d, 8, 244, 472, 316, (34, 40, 54), r=14, outline=(90, 100, 125))
+        text(d, 22, 260, "LAST PLAY", font(FB, 10), GREY, "lm")
+        text(d, 458, 260, "DRIVE: 6 PLAYS, 48 YDS, 3:12", font(FB, 10), GREY, "rm")
+        text(d, 240, 290, "Run up the middle for 4 yards", font(FB, 19), WHITE, "mm")
+        return d
+    return live(line="", extra=ex)
+
+def opt_c():
+    def ex(img, d, c):
+        # the drive drawn on the field: from where it started (NYG 25) to the ball (PHI 34)
+        start = c["gx1"] - 25 * c["yd"]; ball = c["bx"]
+        band = Image.new("RGBA", img.size, (0, 0, 0, 0)); bd = ImageDraw.Draw(band)
+        bd.rectangle(R(ball, c["fy0"] + 4, start, c["fy1"] - 4), fill=(255, 255, 255, 60))
+        img.alpha_composite(band); d = ImageDraw.Draw(img)
+        d.line(R(start, c["fy0"] + 2, start, c["fy1"] - 2), fill=WHITE, width=S)
+        football(d, ball, (c["fy0"] + c["fy1"]) / 2, 16, 10)
+        win_bar(d)
+        text(d, 14, 253, "Run up the middle for 4 yards", font(FR, 12), GREY, "lm")
+        text(d, 466, 253, "Drive: 6 plays, 48 yds, 3:12", font(FS, 12), (170, 176, 192), "rm")
+        return d
+    return live(line="", extra=ex)
+
+def close_game():
+    def ex(img, d, c):
+        win_bar(d, away_pct=47)
+        ov = Image.new("RGBA", img.size, (0, 0, 0, 130)); img.alpha_composite(ov); d = ImageDraw.Draw(img)
+        d.rectangle(R(0, 104, W, 216), fill=(18, 20, 26))
+        d.rectangle(R(0, 104, W, 108), fill=(245, 150, 30)); d.rectangle(R(0, 212, W, 216), fill=(245, 150, 30))
+        # clock icon
+        d.ellipse(R(36, 128, 96, 188), outline=(245, 150, 30), width=5 * S)
+        d.line(R(66, 158, 66, 138), fill=(245, 150, 30), width=4 * S); d.line(R(66, 158, 80, 166), fill=(245, 150, 30), width=4 * S)
+        text(d, 290, 145, "CLOSE GAME", font(FB, 46), (245, 150, 30), "mm")
+        text(d, 290, 189, "Giants 21, Eagles 20 - 1:48 left in the 4th", font(FB, 15), WHITE, "mm")
+        return d
+    return live(line="", extra=ex, q="4TH", clock="1:48", ascore="20", hscore="21", down="3rd & 4")
+
+def stats_page():
+    img, d = new()
+    paste_logo(img, "nfl/phi.png", 40, 26, 36); paste_logo(img, "nfl/nyg.png", 440, 26, 36)
+    d = ImageDraw.Draw(img)
+    text(d, 240, 20, "EAGLES 17  -  GIANTS 21", font(FB, 18), WHITE, "mm")
+    text(d, 240, 40, "3RD  4:12", font(FS, 12), GREY, "mm")
+    rows = [("PASSING", "14/22, 168 yds, 1 TD", "17/25, 201 yds, 2 TD"),
+            ("RUSHING", "11 car, 64 yds", "15 car, 88 yds, 1 TD"),
+            ("RECEIVING", "5 rec, 71 yds", "6 rec, 94 yds, 1 TD"),
+            ("TOTAL YARDS", "232", "289"), ("TURNOVERS", "1", "0")]
+    y = 64
+    for lab_, a, b in rows:
+        rbox(d, 8, y, 472, y + 36, TILE, r=10)
+        text(d, 240, y + 9, lab_, font(FB, 9), GREY, "mm")
+        text(d, 20, y + 23, a, font(FS, 13), WHITE, "lm"); text(d, 460, y + 23, b, font(FS, 13), WHITE, "rm")
+        y += 41
+    text(d, 240, 288 + 18, "Tap anywhere to go back", font(FS, 11), DIM, "mm")
+    return finish(img, "stats")
+
 if len(sys.argv) > 1 and sys.argv[1] == "rz":
     shots = [("1. Home (Giants in red zone)", home(rz=True)), ("2. Red zone alert (3 sec)", live(rz=True, alert=True)),
              ("3. Game screen in red zone", live(rz=True))]
@@ -479,6 +560,10 @@ elif len(sys.argv) > 1 and sys.argv[1] == "opp":
     shots = [("Ours: RED ZONE (good)", live(rz=True, alert=True)), ("Theirs, option A: DEFENSE!", live(rz=True, opp=True, bad="defense")),
              ("Theirs, option B: UH OH...", live(rz=True, opp=True, bad="uhoh"))]
     name = "mini_redzone_opp.png"
+elif len(sys.argv) > 1 and sys.argv[1] == "game":
+    shots = [("A. Play line switches to drive", opt_a()), ("B. Play pops up, then hides", opt_b()), ("C. Drive drawn on the field", opt_c()),
+             ("Close game alert", close_game()), ("Tap the score: stats", stats_page())]
+    name = "mini_game_extras.png"
 elif len(sys.argv) > 1 and sys.argv[1] == "plays":
     shots = [("1. Interception (ours)", picked_off()), ("2. Fumble recovery (ours)", fumble()), ("3. Third-down stop", stopped()),
              ("4. Turnover on downs", stonewalled()), ("5. Sack", sacked()), ("6. They punt", puntastic()),

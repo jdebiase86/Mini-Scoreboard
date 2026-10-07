@@ -38,3 +38,7 @@ Draft 3 (Oct 6): battery picked - JLJLUP LP103665, 3.7 V 3000 mAh, about
 (Amazon 4-pack, one per board plus a spare). Guides moved to a 69 x 38 pocket.
 Before first plug-in: check the red wire lands on the "+" mark beside the
 board's BAT plug (left "-", right "+" seen from the back, plug at the bottom).
+
+Speaker option (Oct 7): python3 deepen.py <buttons base> base_spk.stl 10 67 36 66.5 speaker
+puts a 20 x 30 mm cavity speaker pocket at the USB-C end with a grille of
+1.8 mm holes in the back, and moves the battery 11 mm toward the switch end.

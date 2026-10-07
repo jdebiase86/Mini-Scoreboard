@@ -8,6 +8,8 @@ SRC, OUT = sys.argv[1], sys.argv[2]
 H = float(sys.argv[3]) if len(sys.argv) > 3 else 10.0     # extra depth, mm (= battery thickness)
 BL = float(sys.argv[4]) if len(sys.argv) > 4 else 60.0    # battery length (along the case), mm
 BW = float(sys.argv[5]) if len(sys.argv) > 5 else 50.0    # battery width, mm
+BX = float(sys.argv[6]) if len(sys.argv) > 6 else 55.55   # battery centre along the case, mm
+SPK = len(sys.argv) > 7 and sys.argv[7] == "speaker"     # 20 x 30 mm cavity speaker at the USB-C end
 ZC = -6.3            # cut height: inside the standoff zone, above the floor (floor top -6.7)
 FLOOR_TOP = -6.7
 base = trimesh.load(SRC)
@@ -27,7 +29,7 @@ fill.apply_translation([-2.85, 30.58, FLOOR_TOP - H / 2])
 parts.append(fill)
 # battery cradle: L-shaped corner ribs, 3 mm tall, around a pocket 2 mm bigger than the battery, centred under the board
 bw, bh, rt, rh = BL + 2, BW + 2, 1.6, 3.0
-bx0, by0 = 55.55 - bw / 2, 30.575 - bh / 2
+bx0, by0 = BX - bw / 2, 30.575 - bh / 2
 fz = FLOOR_TOP - H
 for cx, cy in ((bx0, by0), (bx0 + bw, by0), (bx0, by0 + bh), (bx0 + bw, by0 + bh)):
     sx = -1 if cx == bx0 else 1; sy = -1 if cy == by0 else 1
@@ -40,6 +42,20 @@ acc = M(parts[0])
 for p in parts[1:]:
     for q in (p.split(only_watertight=True) if len(p.split(only_watertight=True)) > 1 else [p]): acc = acc + M(q)
 # switch slot through the right end wall (x = 111..116), mid-depth of the new section
+if SPK:
+    # speaker pocket: 20 (along) x 30 mm, corner ribs, and a grille of 2 mm holes through the floor under it
+    SX, SY, sw_, sh_ = 21.0, 30.575, 21.0, 31.0
+    for cx, cy in ((SX - sw_ / 2, SY - sh_ / 2), (SX + sw_ / 2, SY - sh_ / 2), (SX - sw_ / 2, SY + sh_ / 2), (SX + sw_ / 2, SY + sh_ / 2)):
+        sx = -1 if cx < SX else 1; sy = -1 if cy < SY else 1
+        rx = trimesh.creation.box(extents=[6, rt, 2.5]); rx.apply_translation([cx - sx * (3 - rt), cy + sy * rt / 2, fz + 1.25])
+        ry = trimesh.creation.box(extents=[rt, 6, 2.5]); ry.apply_translation([cx + sx * rt / 2, cy - sy * (3 - rt), fz + 1.25])
+        acc = acc + M(rx) + M(ry)
+    for i in range(-3, 4):
+        for j in range(-5, 6):
+            hx = SX + i * 2.6 + (1.3 if j % 2 else 0); hy = SY + j * 2.3
+            if (hx - SX) ** 2 / 8.0 ** 2 + (hy - SY) ** 2 / 12.5 ** 2 > 1: continue
+            c = trimesh.creation.cylinder(radius=0.9, height=6, sections=16); c.apply_translation([hx, hy, fz - 1])
+            acc = acc - M(c)
 sw = trimesh.creation.box(extents=[8, 9.5, 4.5]); sw.apply_translation([113.5, 30.58, ZC - H / 2 - 0.5])
 acc = acc - M(sw)
 mm = acc.to_mesh()
