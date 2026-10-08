@@ -18,10 +18,11 @@
 #include "mn_portal.h"
 #include "mn_ota.h"
 #include "mn_ui.h"
+#include "mn_picker.h"
 #include "mn_log.h"
 #include "mn_version.h"
 
-enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM };
+enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK };
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
@@ -148,6 +149,12 @@ static void handleTap(int x, int y) {
       int hit = uiHomeHit(homePage, x, y);
       if (hit < 0) return;
       uiTileFlash(homePage, hit);
+      if (hit == HIT_EDIT) {
+        setMode(M_PICK);
+        pickerStart();
+        dirty = false;
+        return;
+      }
       if (hit == HIT_MORE || hit == HIT_BACK) {
         homePage = hit == HIT_MORE ? 1 : 0;
         dirty = true;
@@ -162,6 +169,9 @@ static void handleTap(int x, int y) {
       break;
     case M_CONNECTED:
       setMode(M_HOME);   // a tap skips the message
+      break;
+    case M_PICK:
+      if (pickerTap(x, y)) { homePage = 0; setMode(M_HOME); }
       break;
     default:
       break;
@@ -202,7 +212,7 @@ void loop() {
   } else if (touchDown() && dimmed) {
     lcdBrightness(level());   // wake as soon as the finger lands; the tap itself is swallowed
   }
-  bool idleScreen = mode == M_HOME || mode == M_TEAM;
+  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK;
   if (idleScreen && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
     lcdBrightness(max(10, level() / 8));
     dimmed = true;
@@ -248,6 +258,11 @@ void loop() {
 
     case M_TEAM:
       if (dirty) { uiTeam(shownTeam); dirty = false; }
+      break;
+
+    case M_PICK:
+      if (dirty) { pickerDraw(); dirty = false; }
+      pickerLoop();
       break;
   }
   delay(10);

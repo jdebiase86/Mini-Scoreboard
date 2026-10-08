@@ -36,6 +36,13 @@ static void autoIcon(int cx, int cy, int r, uint16_t col, int w) {
   }
 }
 
+void uiText(FontId f, const String& s, int x, int y, uint16_t col, uint16_t bg, textdatum_t datum) {
+  text(f, s, x, y, col, bg, datum);
+}
+void uiTile(int x0, int y0, int x1, int y1, uint16_t fill, uint16_t edge, int r, int width) {
+  tile(x0, y0, x1, y1, fill, edge, r, width);
+}
+
 static void centre(FontId f, const String& s, int y, uint16_t col) {
   text(f, s, SCREEN_W / 2, y, col, C_BG, middle_center);
 }
@@ -165,8 +172,8 @@ void uiHomeClock(bool force) {
   lastMinute = lt.tm_min;
   char s[24];
   strftime(s, sizeof(s), "%a %-I:%M %p", &lt);
-  lcd.fillRect(170, 4, 140, 26, C_BG);
-  text(F_S13, s, 240, 16, C_GREY, C_BG, middle_center);
+  lcd.fillRect(150, 4, 136, 26, C_BG);
+  text(F_S13, s, 218, 16, C_GREY, C_BG, middle_center);
 }
 
 // What sits in each of a page's six slots: an index into settings.picks,
@@ -195,6 +202,15 @@ static void arrowIcon(int cx, int cy, uint16_t col) {   // a fat right arrow
 
 // back button where "My Teams" sits on the first page
 static const int BK_X0 = 6, BK_Y0 = 3, BK_X1 = 112, BK_Y1 = 29;
+// EDIT (the team picker) in the first page's top bar, left of where BOARD goes
+static const int ED_X0 = 292, ED_Y0 = 3, ED_X1 = 370, ED_Y1 = 29;
+
+static void editButton() {
+  tile(ED_X0, ED_Y0, ED_X1, ED_Y1, C_TILE, C_EDGE, 13);
+  lcd.drawWideLine(ED_X0 + 13, 22, ED_X0 + 21, 10, 1.6f, C_WHITE);   // a pencil
+  lcd.fillTriangle(ED_X0 + 10, 25, ED_X0 + 11, 20, ED_X0 + 14, 23, C_WHITE);
+  text(F_B12, "EDIT", ED_X0 + 49, 16, C_WHITE, C_TILE, middle_center);
+}
 
 void uiHome(int page) {
   if (page >= uiHomePages()) page = 0;
@@ -202,6 +218,7 @@ void uiHome(int page) {
   uiHomeClock(true);
   if (page == 0) {
     text(F_B16, "My Teams", 12, 16, C_WHITE, C_BG, middle_left);
+    editButton();
   } else {
     tile(BK_X0, BK_Y0, BK_X1, BK_Y1, C_TILE, C_EDGE, 13);
     lcd.fillTriangle(BK_X0 + 12, 16, BK_X0 + 20, 9, BK_X0 + 20, 23, C_WHITE);
@@ -209,9 +226,10 @@ void uiHome(int page) {
     text(F_S13, "More teams", 468, 16, C_GREY, C_BG, middle_right);
   }
   if (!settings.npicks) {
-    centre(F_B24, "Pick your teams", 140, C_WHITE);
-    centre(F_M15, "On a phone or computer on your Wi-Fi, go to", 180, C_GREY);
-    centre(F_B24, "mini.local", 216, C_YELLOW);
+    centre(F_B24, "Pick your teams", 130, C_WHITE);
+    centre(F_M15, "Tap EDIT up top, or on a phone or", 172, C_GREY);
+    centre(F_M15, "computer on your Wi-Fi go to", 196, C_GREY);
+    centre(F_B24, "mini.local", 232, C_YELLOW);
     return;
   }
   int slot[6];
@@ -244,6 +262,7 @@ void uiHome(int page) {
 
 int uiHomeHit(int page, int x, int y) {
   if (page > 0 && x < BK_X1 + 16 && y < BK_Y1 + 6) return HIT_BACK;
+  if (page == 0 && x >= ED_X0 - 10 && x < ED_X1 + 4 && y < ED_Y1 + 4) return HIT_EDIT;
   int slot[6];
   int n = pageSlots(page, slot);
   for (int k = 0; k < n; k++) {
@@ -255,8 +274,9 @@ int uiHomeHit(int page, int x, int y) {
 }
 
 void uiTileFlash(int page, int hit) {
-  if (hit == HIT_BACK) {
-    lcd.drawRoundRect(BK_X0, BK_Y0, BK_X1 - BK_X0, BK_Y1 - BK_Y0, 13, C_WHITE);
+  if (hit == HIT_BACK || hit == HIT_EDIT) {
+    if (hit == HIT_BACK) lcd.drawRoundRect(BK_X0, BK_Y0, BK_X1 - BK_X0, BK_Y1 - BK_Y0, 13, C_WHITE);
+    else lcd.drawRoundRect(ED_X0, ED_Y0, ED_X1 - ED_X0, ED_Y1 - ED_Y0, 13, C_WHITE);
     delay(90);
     return;
   }

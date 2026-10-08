@@ -4,6 +4,8 @@
 #include "../mini/mn_lcd.h"
 #include "../mini/mn_ui.h"
 #include "../mini/mn_settings.h"
+#include "../mini/mn_picker.h"
+#include <string.h>
 #include <chrono>
 #include <thread>
 #include <stdio.h>
@@ -14,6 +16,11 @@ uint32_t millis() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count() + 100000;
 }
 void delay(uint32_t) {}
+void Settings::save() {}
+static const char* const LK[L_COUNT] = {"NFL", "CFB", "MLB", "NHL", "NBA"};
+String teamKey(int i) { return String(LK[TEAMS[i].league]) + ":" + TEAMS[i].abbr; }
+void mnLog(const char*, ...) {}
+
 
 static void save(const char* name) {
   char path[256];
@@ -26,6 +33,26 @@ static void save(const char* name) {
     for (int x = 0; x < SCREEN_W; x++) { fputc(line[x].r, f); fputc(line[x].g, f); fputc(line[x].b, f); }
   }
   fclose(f);
+}
+
+// the team picker, driven by taps like a finger would (sheet: design/mini_picker_real.png)
+static void pickerShots() {
+  settings.setPicksFromString("NFL:NYG,NHL:NYR,CFB:FLA,MLB:NYY,NBA:NY");
+  uiHome(0); save("p1_home_edit");
+  pickerStart(); save("p2_leagues");
+  pickerTap(80, 100); save("p3_nfl_page1");                 // NFL
+  pickerTap(444, 250); pickerTap(444, 250);                  // down twice
+  pickerTap(100, 285); save("p4_nfl_page3_jets");            // tick the Jets
+  pickerTap(40, 16);                                         // back to leagues
+  pickerTap(240, 100); save("p5_college");                   // COLLEGE
+  pickerTap(80, 100);                                        // SEC
+  pickerTap(300, 117); save("p6_sec_lsu");                   // tick LSU
+  pickerTap(40, 16); pickerTap(40, 16);                      // back, back
+  save("p7_leagues_after");
+  pickerTap(400, 250);                                       // DONE
+  uiHome(0); save("p8_home_after");
+  settings.setPicksFromString("NFL:NYG,NFL:NYJ,NFL:DAL,CFB:FLA,CFB:LSU,MLB:NYY,MLB:NYM,NHL:NYR,NHL:NJ,NBA:NY");
+  pickerStart(); pickerTap(80, 100); pickerTap(100, 61); save("p9_full");   // 10 picked, tap Arizona
 }
 
 int main() {
@@ -53,5 +80,6 @@ int main() {
   settings.setPicksFromString("");
   uiHome(0); save("13_no_teams");
   uiBootHold(3); save("14_boot_hold");
+  pickerShots();
   return 0;
 }

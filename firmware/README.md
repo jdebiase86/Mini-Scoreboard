@@ -5,7 +5,7 @@
   "Minimal SPIFFS" (two 1.9 MB program slots for updates over Wi-Fi).
 - mini_hw_test/: the hardware test (one file, LovyanGFX only).
 - hosttest/: draws the real screens on a computer (render_screens.sh ->
-  design/mini_stage1.png) and the real setup page (page_host.sh ->
+  design/mini_stage1.png, design/mini_picker_real.png) and the real setup page (page_host.sh ->
   out/setup.html and phone-sized pictures). Needs libsdl2-dev and LovyanGFX.
 
 Build:
@@ -27,6 +27,7 @@ Layout (mini/):
   taps, screen dimming, BOOT held 5 s = forget Wi-Fi.
 - mn_lcd: screen + touch driver (ST7796S/U, XPT2046), colour modes, fonts.
 - mn_touch: taps, first-start touch setup.
+- mn_picker: picking teams on the screen (EDIT on the home screen).
 - mn_ui: the screens. mn_portal: setup page / mini.local (plus /log and
   /screen, a picture of the screen). mn_ota: updates from GitHub releases.
 - mn_settings, mn_teams (copied from Scoreboard's sb_teams.h), mn_dns

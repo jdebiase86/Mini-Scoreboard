@@ -37,10 +37,11 @@ void Settings::setPicksFromString(const String& s) {
 }
 X
 g++ -std=gnu++17 -O1 -w -DMN_HOST -I shim -I "$LGFX/src" \
-  render_screens.cpp ../mini/mn_ui.cpp ../mini/mn_lcd.cpp out/mn_settings_host.cpp \
+  render_screens.cpp ../mini/mn_ui.cpp ../mini/mn_picker.cpp ../mini/mn_lcd.cpp out/mn_settings_host.cpp \
   $(find "$LGFX/src/lgfx/v1" -maxdepth 1 -name '*.cpp') \
   $(find "$LGFX/src/lgfx/v1/misc" "$LGFX/src/lgfx/v1/panel" "$LGFX/src/lgfx/v1/platforms/sdl" -name '*.cpp') \
   $(find "$LGFX/src/lgfx/utility" "$LGFX/src/lgfx/Fonts" -name "*.c") \
   -lSDL2 -lpthread -o out/render_screens
 out/render_screens
 python3 sheet.py
+python3 sheet.py picker
