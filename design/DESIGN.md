@@ -105,6 +105,15 @@ built in the stages below.
 12. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
 
+13. Team picker on the mini itself (Oct 8, mock-ups design/mini_picker.png):
+   a small EDIT button in the home screen's top bar opens it. One tile per
+   league with how many are picked, plus a green DONE tile (save, go home).
+   College football picks a conference first (SEC, Big Ten, ACC, Big 12,
+   Others). Teams: option A picked - a list, 10 a page in two columns, big
+   up / down arrows on the right, tap a row to tick it. The phone setup
+   page stays the main way; this is the handy extra. Up to 10 teams: more
+   than 5 go on a second home page behind a MORE tile (Oct 7).
+
 ## Build stages (Oct 7)
 1. Screen, touch and Wi-Fi setup (v0.1, firmware/mini): touch setup on first
    start, setup screen with a code to scan (joins the mini's own Wi-Fi, the
@@ -143,6 +152,7 @@ built in the stages below.
 - mini_plays.png: the nine play animations (defense, turnovers, punts).
 - mini_game_extras.png: win chance bar, drive tracker options A/B/C, close
   game alert, stats page.
+- mini_picker.png: the team picker on the mini (option A list picked).
 - mini_game_v2.png: the picked game screen (drive on the field, play
   pop-up, small HOME, no AUTO button), final with Auto running, upcoming.
 - mock_mini.py draws them all; see the top of the file.
