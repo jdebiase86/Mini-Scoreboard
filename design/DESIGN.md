@@ -13,6 +13,13 @@ built in the stages below.
 - USB-C power and programming, BAT plug with built-in lithium charging,
   micro SD, speaker plug, RGB LED.
 
+- Oct 9, first try: on a USB-C to USB-C cable from a Mac the board stayed
+  dark and the Mac saw no port (the same cable and Mac work with the big
+  board). Likely the board's USB-C socket lacks the resistors that ask a
+  C-to-C cable for power, a common gap on these boards. Use a USB-A to USB-C
+  cable (and a USB-C to USB-A adapter on the Mac); for everyday power a
+  USB-A charger brick. To confirm once a USB-A cable is at hand.
+
 ## Decisions
 1. Wide layout (standing on a desk), dark look, rounded tiles, big buttons.
 2. Home screen: a tile per favourite team plus an AUTO tile. Live games get a
