@@ -15,8 +15,10 @@ built in the stages below.
 
 - Oct 9, first try: on a USB-C to USB-C cable from a Mac the board stayed
   dark and the Mac saw no port (the same cable and Mac work with the big
-  board). Likely the board's USB-C socket lacks the resistors that ask a
-  C-to-C cable for power, a common gap on these boards. Use a USB-A to USB-C
+  board). Photos show 5.1k ("512") resistors by the USB-C socket, so the
+  parts are there; the cause is likely how they're wired (cheap boards often
+  share one resistor between both CC pins, which Macs won't power). Not
+  software: nothing lit up at all. Use a USB-A to USB-C
   cable (and a USB-C to USB-A adapter on the Mac); for everyday power a
   USB-A charger brick. Confirmed Oct 9: lights right up from a car USB charger. Factory demo (LVGL
   widgets) shows normal colours, upright with the USB-C plug on the right.
