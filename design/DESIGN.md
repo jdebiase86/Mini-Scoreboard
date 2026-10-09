@@ -6,7 +6,7 @@ Joe said go Oct 7, 2026 (first board due Fri Oct 9): firmware is being
 built in the stages below.
 
 ## Hardware (ordered, not here yet - Amazon shows one board due Fri Oct 9 again, the other two Oct 20 to Nov 5, 2026; battery and speaker sooner)
-- Hosyond 4.0" ESP32 display (Amazon B0FGJJ24S1): ESP32-32E (ESP32-D0WD-V3,
+- Hosyond 4.0" ESP32 display (Amazon B0FGJJ24S1; the one bought is the identical iPistBit listing): ESP32-32E (ESP32-D0WD-V3,
   dual core 240 MHz), 520 KB RAM, no PSRAM, 4 MB flash.
 - 480x320 TN TFT, ST7796S over 4-line SPI. Resistive touch (firm press), so
   every button is big.
@@ -152,6 +152,59 @@ built in the stages below.
 5. Sound.
 6. Saver mode and the battery level icon.
 7. Remote for the big LED board (last).
+
+## Carried over from the first design chat (Oct 6-7, added Oct 9)
+Board and parts
+- The board bought is the iPistBit 4.0" ESP32-32E listing ($19.99 for the
+  4.0 inch option; the $17.99 option is the 3.5 inch). Same board as the
+  Hosyond. LCDwiki calls it E32R40T (spec PDF:
+  lcdwiki.com/res/E32R40T/E32R40T_E32N40T_Specification_V1.0.pdf).
+- Speakers: two CQRobot pairs (three boards plus a spare). Passed over: a
+  4 ohm 3 W 25 x 35 (ACEIRMC and similar) and a bare 28 mm 8 ohm (uxcell).
+  Speaker polarity can't damage anything, so no plug check for it.
+
+Case and stand
+- Speaker pocket still to redo in deepen.py: 35 x 25 mm (plus the 1 mm foam
+  lip and the wire tab) instead of 20 x 30 at x=21, face-down over the hole
+  grille, battery about 15 mm toward the far end, same 24 mm closed case.
+  Check it clears the RESET / BOOT flex tabs in the floor.
+- Colours: case in Giants blue, stand in Giants red (case/scene.py
+  CASE=0.07,0.17,0.50 STAND=0.70,0.10,0.20).
+- Stand: not designed. Screen leans back about 17 degrees (Joe corrected a
+  render that tipped forward). Needs the MakerWorld stand file or a new
+  stand sized for the 24 mm case.
+- The MakerWorld base, lid and buttons files are Joe's downloads and stay
+  out of the repo on purpose; re-attach them to rebuild the case.
+- Don't print the deep base until the speaker pocket is redone and the
+  board fit is checked. Printing the designer's original buttons version
+  (or just the lid) to test fit is fine.
+- Open: in the original case the USB-C opening is on the left seen from the
+  front (lid side), while the factory demo reads upright with USB-C on the
+  right. Check on the real board and case; the firmware can flip the screen.
+
+Battery saver (agreed, to build in its stage)
+- A small battery button in the home top bar, next to BOARD, toggles Normal
+  and Saver; the back "B" tab can toggle it too.
+- Saver: dims to about a third, checks ESPN every 30 s with Wi-Fi resting in
+  between, screen off after a couple of minutes untouched, tap to wake. Big
+  moments still wake it, then it dims again.
+- Offered, not drawn: a mock-up of the battery icon and Saver button.
+
+Sound
+- Short clips only (touchdown horn, goal horn, crowd roar, maybe a bit of a
+  fight song), volume setting, mute, quiet hours, top volume just under max.
+
+Ideas offered, not picked (don't build unless Joe asks)
+- Countdown to the next game, standings, schedule (next five games), night
+  mode / clock overnight, upset alert for ranked college teams, the RGB
+  light glowing team colours (needs a clear window in the case), a
+  rivalry-week look, a trash-talk button between two minis (needs an online
+  relay), big-board sync of animations.
+- Mock-ups offered, not drawn: baseball diamond (runners, balls, strikes,
+  outs), hockey and basketball screens.
+
+Small notes
+- The TN screen is fine in shade but hard to read in direct sun.
 
 ## Technical notes for later
 - No PSRAM: fetch one favourite team's ESPN scoreboard at a time and filter
