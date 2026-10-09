@@ -283,3 +283,13 @@ void pickerLoop() {
   fullAt = 0;
   if (screen == S_LIST) headerCount(league == L_CFB && conf >= 0 ? countWhere(isConf, conf) : countWhere(isLeague, league));
 }
+
+void pickerSwipe(bool up) {
+  if (screen != S_LIST) return;
+  static int teams[NTEAMS];
+  int pages = (listTeams(teams) + PER_PAGE - 1) / PER_PAGE;
+  int was = page;
+  if (up && page < pages - 1) page++;
+  if (!up && page > 0) page--;
+  if (page != was) pickerDraw();
+}

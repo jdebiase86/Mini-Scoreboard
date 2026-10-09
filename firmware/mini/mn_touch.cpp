@@ -4,7 +4,8 @@
 #include "mn_log.h"
 
 static bool down = false;
-static int downX, downY;
+static int downX, downY, lastX, lastY;
+static const int SWIPE_MIN = 60;   // dots the finger has to travel to make a swipe
 static uint32_t lastSeen = 0, lastActivity = 0;
 
 void touchBegin() {
@@ -14,7 +15,7 @@ void touchBegin() {
 bool touchDown() { return down; }
 uint32_t touchLastActivity() { return lastActivity; }
 
-bool touchPoll(int& x, int& y) {
+TouchEvent touchPoll(int& x, int& y) {
   int32_t tx, ty;
   bool now = lcd.getTouch(&tx, &ty);
   uint32_t ms = millis();
@@ -22,16 +23,21 @@ bool touchPoll(int& x, int& y) {
     lastSeen = ms;
     lastActivity = ms;
     if (!down) { down = true; downX = tx; downY = ty; }
-    return false;
+    lastX = tx;
+    lastY = ty;
+    return T_NONE;
   }
   // a short gap is the screen wobbling, not a lift
   if (down && ms - lastSeen > 60) {
     down = false;
     x = downX;
     y = downY;
-    return true;
+    int dx = lastX - downX, dy = lastY - downY;
+    if (abs(dx) >= SWIPE_MIN && abs(dx) > abs(dy) * 3 / 2) return dx < 0 ? T_SWIPE_LEFT : T_SWIPE_RIGHT;
+    if (abs(dy) >= SWIPE_MIN && abs(dy) > abs(dx) * 3 / 2) return dy < 0 ? T_SWIPE_UP : T_SWIPE_DOWN;
+    return T_TAP;
   }
-  return false;
+  return T_NONE;
 }
 
 static void centred(FontId f, const char* s, int y, uint16_t col) {

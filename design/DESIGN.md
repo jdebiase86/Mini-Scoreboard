@@ -125,6 +125,12 @@ built in the stages below.
    page stays the main way; this is the handy extra. Up to 10 teams: more
    than 5 go on a second home page behind a MORE tile (Oct 7).
 
+14. Swipes (Oct 9, Joe: all four), as shortcuts - every one also has a
+   button: home left / right between the two pages; team / game screen left
+   / right to the next / previous favourite; team picker list up / down for
+   the next / previous page; pop-up cards (last play) swiped away, when
+   they're built.
+
 ## Build stages (Oct 7)
 1. Screen, touch and Wi-Fi setup (v0.1, firmware/mini): touch setup on first
    start, setup screen with a code to scan (joins the mini's own Wi-Fi, the

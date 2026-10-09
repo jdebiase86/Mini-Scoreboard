@@ -41,7 +41,7 @@ static void pickerShots() {
   uiHome(0); save("p1_home_edit");
   pickerStart(); save("p2_leagues");
   pickerTap(80, 100); save("p3_nfl_page1");                 // NFL
-  pickerTap(444, 250); pickerTap(444, 250);                  // down twice
+  pickerSwipe(true); pickerSwipe(true);                      // swipe up twice (same as the down arrow twice)
   pickerTap(100, 285); save("p4_nfl_page3_jets");            // tick the Jets
   pickerTap(40, 16);                                         // back to leagues
   pickerTap(240, 100); save("p5_college");                   // COLLEGE

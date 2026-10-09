@@ -178,6 +178,35 @@ static void handleTap(int x, int y) {
   }
 }
 
+// Swipes are shortcuts; every one of them has a button that does the same.
+//   home: left / right between the two pages (more than 5 teams)
+//   team page: left / right to the next / previous team
+//   team picker list: up / down for the next / previous page
+//   (later: a pop-up card swiped away)
+static void handleSwipe(TouchEvent ev) {
+  switch (mode) {
+    case M_HOME:
+      if (ev == T_SWIPE_LEFT && homePage == 0 && uiHomePages() > 1) { homePage = 1; dirty = true; }
+      if (ev == T_SWIPE_RIGHT && homePage == 1) { homePage = 0; dirty = true; }
+      break;
+    case M_TEAM: {
+      if (shownTeam < 0 || settings.npicks < 2 || (ev != T_SWIPE_LEFT && ev != T_SWIPE_RIGHT)) break;
+      int i = 0;
+      while (i < settings.npicks && settings.picks[i] != shownTeam) i++;
+      if (i == settings.npicks) break;
+      i = (i + (ev == T_SWIPE_LEFT ? 1 : settings.npicks - 1)) % settings.npicks;
+      shownTeam = settings.picks[i];
+      dirty = true;
+      break;
+    }
+    case M_PICK:
+      if (ev == T_SWIPE_UP || ev == T_SWIPE_DOWN) pickerSwipe(ev == T_SWIPE_UP);
+      break;
+    default:
+      break;
+  }
+}
+
 void loop() {
   portalLoop();
   if (checkBootButton()) { delay(20); return; }
@@ -206,9 +235,11 @@ void loop() {
 
   // taps; the screen dims after a minute untouched and the first tap wakes it
   int tx, ty;
-  if (touchPoll(tx, ty)) {
+  TouchEvent ev = touchPoll(tx, ty);
+  if (ev) {
     if (dimmed) { lcdBrightness(level()); dimmed = false; }
-    else handleTap(tx, ty);
+    else if (ev == T_TAP) handleTap(tx, ty);
+    else handleSwipe(ev);
   } else if (touchDown() && dimmed) {
     lcdBrightness(level());   // wake as soon as the finger lands; the tap itself is swallowed
   }

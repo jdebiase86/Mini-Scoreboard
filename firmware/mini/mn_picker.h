@@ -10,5 +10,6 @@
 
 void pickerStart();              // takes a copy of the current teams, draws the league tiles
 bool pickerTap(int x, int y);    // true once DONE was tapped (saved)
+void pickerSwipe(bool up);       // team list: swipe up = next page, down = previous
 void pickerDraw();               // redraw the current picker screen
 void pickerLoop();               // call often: puts the count back after "10 is the most"

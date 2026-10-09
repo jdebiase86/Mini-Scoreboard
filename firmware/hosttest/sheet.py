@@ -15,7 +15,7 @@ PICK = len(sys.argv) > 1 and sys.argv[1] == "picker"
 if PICK:
     OUT = os.path.join(HERE, "../../design/mini_picker_real.png")
     CAP = {"p1_home_edit": "Home: EDIT next to the clock", "p2_leagues": "Tap EDIT: leagues + DONE",
-           "p3_nfl_page1": "Tap NFL: page 1 of 4", "p4_nfl_page3_jets": "Arrow down twice, tap Jets",
+           "p3_nfl_page1": "Tap NFL: page 1 of 4", "p4_nfl_page3_jets": "Swipe up twice (or arrow), tap Jets",
            "p5_college": "BACK, tap COLLEGE", "p6_sec_lsu": "Tap SEC, tap LSU",
            "p7_leagues_after": "BACK twice: counts updated", "p8_home_after": "Tap DONE: 7 teams, MORE shows",
            "p9_full": "Already 10 picked, tap another"}
