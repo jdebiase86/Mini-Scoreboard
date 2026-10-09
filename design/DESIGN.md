@@ -78,7 +78,7 @@ built in the stages below.
    2 W RMS (3 W max), front-firing, 35 x 25 x 6.8 mm plus a 1 mm lip and a
    small wire tab, JST 1.25 mm 2-pin plug on an 8 cm lead (red +), sold as
    a pair. Amazon B0CMQCQQV4 (not B0F2MXKNBW, the same speaker with a
-   2.0 mm plug that won't fit; not the 4 ohm version). Not ordered yet (Oct 9). Plugs into the board's speaker socket (IO26 DAC, IO4 amp enable
+   2.0 mm plug that won't fit; not the 4 ohm version). Ordered Oct 9. Plugs into the board's speaker socket (IO26 DAC, IO4 amp enable
    per LCDwiki). Sits face-down at the USB-C end over a patch of sound holes
    in the back (case/case_speaker_option.png shows the earlier 20 x 30
    pocket; to redo at 25 x 35, battery slides about 15 mm toward the far
