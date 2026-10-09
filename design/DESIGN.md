@@ -18,7 +18,8 @@ built in the stages below.
   board). Likely the board's USB-C socket lacks the resistors that ask a
   C-to-C cable for power, a common gap on these boards. Use a USB-A to USB-C
   cable (and a USB-C to USB-A adapter on the Mac); for everyday power a
-  USB-A charger brick. Confirmed Oct 9: lights right up from a car USB charger.
+  USB-A charger brick. Confirmed Oct 9: lights right up from a car USB charger. Factory demo (LVGL
+  widgets) shows normal colours, upright with the USB-C plug on the right.
 
 ## Decisions
 1. Wide layout (standing on a desk), dark look, rounded tiles, big buttons.
