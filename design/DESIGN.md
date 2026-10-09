@@ -2,16 +2,29 @@
 
 A desk-sized mini scoreboard on a 4.0" ESP32 touch screen. Companion to the
 64x64 LED board in [Scoreboard](https://github.com/jdebiase86/Scoreboard).
-Design only so far: no firmware is written until the board arrives and Joe
-says go.
+Joe said go Oct 7, 2026 (first board due Fri Oct 9): firmware is being
+built in the stages below.
 
 ## Hardware (ordered, not here yet - Amazon shows one board due Fri Oct 9 again, the other two Oct 20 to Nov 5, 2026; battery and speaker sooner)
-- Hosyond 4.0" ESP32 display (Amazon B0FGJJ24S1): ESP32-32E (ESP32-D0WD-V3,
+- Hosyond 4.0" ESP32 display (Amazon B0FGJJ24S1; the one bought is the identical iPistBit listing): ESP32-32E (ESP32-D0WD-V3,
   dual core 240 MHz), 520 KB RAM, no PSRAM, 4 MB flash.
 - 480x320 TN TFT, ST7796S over 4-line SPI. Resistive touch (firm press), so
   every button is big.
 - USB-C power and programming, BAT plug with built-in lithium charging,
   micro SD, speaker plug, RGB LED.
+
+- Oct 9, first try: on a USB-C to USB-C cable from a Mac the board stayed
+  dark and the Mac saw no port (the same cable and Mac work with the big
+  board). Photos show 5.1k ("512") resistors by the USB-C socket, so the
+  parts are there; the cause is likely how they're wired (cheap boards often
+  share one resistor between both CC pins, which Macs won't power). Not
+  software: nothing lit up at all. Also dark on a car's USB-C port with a
+  C-to-C cable, so it's the board: always power it from USB-A. Use a USB-A to USB-C
+  cable (and a USB-C to USB-A adapter on the Mac); for everyday power a
+  USB-A charger brick. Confirmed Oct 9: lights right up from a car USB charger. Factory demo (LVGL
+  widgets) shows normal colours, upright with the USB-C plug on the right.
+  Touch: a normal fingertip works fine, even through the factory protective
+  film, and swipes work (the demo's tabs follow a swipe).
 
 ## Decisions
 1. Wide layout (standing on a desk), dark look, rounded tiles, big buttons.
@@ -64,7 +77,8 @@ says go.
    Sound (Joe wants it, Oct 7): CQRobot enclosed (cavity) speaker, 8 ohm,
    2 W RMS (3 W max), front-firing, 35 x 25 x 6.8 mm plus a 1 mm lip and a
    small wire tab, JST 1.25 mm 2-pin plug on an 8 cm lead (red +), sold as
-   a pair. Plugs into the board's speaker socket (IO26 DAC, IO4 amp enable
+   a pair. Amazon B0CMQCQQV4 (not B0F2MXKNBW, the same speaker with a
+   2.0 mm plug that won't fit; not the 4 ohm version). Ordered Oct 9. Plugs into the board's speaker socket (IO26 DAC, IO4 amp enable
    per LCDwiki). Sits face-down at the USB-C end over a patch of sound holes
    in the back (case/case_speaker_option.png shows the earlier 20 x 30
    pocket; to redo at 25 x 35, battery slides about 15 mm toward the far
@@ -105,6 +119,93 @@ says go.
 12. Its own repo (this one) so its update releases never get in the way of
     the big board, which installs Scoreboard's latest release.
 
+13. Team picker on the mini itself (Oct 8, mock-ups design/mini_picker.png):
+   a small EDIT button in the home screen's top bar opens it. One tile per
+   league with how many are picked, plus a green DONE tile (save, go home).
+   College football picks a conference first (SEC, Big Ten, ACC, Big 12,
+   Others). Teams: option A picked - a list, 10 a page in two columns, big
+   up / down arrows on the right, tap a row to tick it. The phone setup
+   page stays the main way; this is the handy extra. Up to 10 teams: more
+   than 5 go on a second home page behind a MORE tile (Oct 7).
+
+14. Swipes (Oct 9, Joe: all four), as shortcuts - every one also has a
+   button: home left / right between the two pages; team / game screen left
+   / right to the next / previous favourite; team picker list up / down for
+   the next / previous page; pop-up cards (last play) swiped away, when
+   they're built.
+
+## Build stages (Oct 7)
+1. Screen, touch and Wi-Fi setup (v0.1, firmware/mini): touch setup on first
+   start, setup screen with a code to scan (joins the mini's own Wi-Fi, the
+   setup page pops up), home screen tiles (up to 5 teams + AUTO) with
+   placeholder team pages and a HOME button, settings at mini.local,
+   screen dims after a minute, BOOT held 5 s forgets the Wi-Fi, updates
+   over Wi-Fi from this repo's releases. Screens: design/mini_stage1.png
+   (drawn by the real code, firmware/hosttest). Hardware test:
+   firmware/mini_hw_test. Both flash from the browser (flash/README.md).
+2. Scores: ESPN per favourite team, logos, live / final / upcoming tiles,
+   AUTO rotation.
+3. Game screens: football field strip with the drive, win chance bar, last
+   play pop-up; then the other sports.
+4. Red zone and play animations (touchdown, field goal, goal, home run and
+   win first), then the rest.
+5. Sound.
+6. Saver mode and the battery level icon.
+7. Remote for the big LED board (last).
+
+## Carried over from the first design chat (Oct 6-7, added Oct 9)
+Board and parts
+- The board bought is the iPistBit 4.0" ESP32-32E listing ($19.99 for the
+  4.0 inch option; the $17.99 option is the 3.5 inch). Same board as the
+  Hosyond. LCDwiki calls it E32R40T (spec PDF:
+  lcdwiki.com/res/E32R40T/E32R40T_E32N40T_Specification_V1.0.pdf).
+- Speakers: two CQRobot pairs (three boards plus a spare). Passed over: a
+  4 ohm 3 W 25 x 35 (ACEIRMC and similar) and a bare 28 mm 8 ohm (uxcell).
+  Speaker polarity can't damage anything, so no plug check for it.
+
+Case and stand
+- Speaker pocket still to redo in deepen.py: 35 x 25 mm (plus the 1 mm foam
+  lip and the wire tab) instead of 20 x 30 at x=21, face-down over the hole
+  grille, battery about 15 mm toward the far end, same 24 mm closed case.
+  Check it clears the RESET / BOOT flex tabs in the floor.
+- Colours: case in Giants blue, stand in Giants red (case/scene.py
+  CASE=0.07,0.17,0.50 STAND=0.70,0.10,0.20).
+- Stand: not designed. Screen leans back about 17 degrees (Joe corrected a
+  render that tipped forward). Needs the MakerWorld stand file or a new
+  stand sized for the 24 mm case.
+- The MakerWorld base, lid and buttons files are Joe's downloads and stay
+  out of the repo on purpose; re-attach them to rebuild the case.
+- Don't print the deep base until the speaker pocket is redone and the
+  board fit is checked. Printing the designer's original buttons version
+  (or just the lid) to test fit is fine.
+- Open: in the original case the USB-C opening is on the left seen from the
+  front (lid side), while the factory demo reads upright with USB-C on the
+  right. Check on the real board and case; the firmware can flip the screen.
+
+Battery saver (agreed, to build in its stage)
+- A small battery button in the home top bar, next to BOARD, toggles Normal
+  and Saver; the back "B" tab can toggle it too.
+- Saver: dims to about a third, checks ESPN every 30 s with Wi-Fi resting in
+  between, screen off after a couple of minutes untouched, tap to wake. Big
+  moments still wake it, then it dims again.
+- Offered, not drawn: a mock-up of the battery icon and Saver button.
+
+Sound
+- Short clips only (touchdown horn, goal horn, crowd roar, maybe a bit of a
+  fight song), volume setting, mute, quiet hours, top volume just under max.
+
+Ideas offered, not picked (don't build unless Joe asks)
+- Countdown to the next game, standings, schedule (next five games), night
+  mode / clock overnight, upset alert for ranked college teams, the RGB
+  light glowing team colours (needs a clear window in the case), a
+  rivalry-week look, a trash-talk button between two minis (needs an online
+  relay), big-board sync of animations.
+- Mock-ups offered, not drawn: baseball diamond (runners, balls, strikes,
+  outs), hockey and basketball screens.
+
+Small notes
+- The TN screen is fine in shade but hard to read in direct sun.
+
 ## Technical notes for later
 - No PSRAM: fetch one favourite team's ESPN scoreboard at a time and filter
   the JSON while streaming. No all-FBS ticker or ranked feed. HTTPS needs
@@ -124,6 +225,7 @@ says go.
 - mini_plays.png: the nine play animations (defense, turnovers, punts).
 - mini_game_extras.png: win chance bar, drive tracker options A/B/C, close
   game alert, stats page.
+- mini_picker.png: the team picker on the mini (option A list picked).
 - mini_game_v2.png: the picked game screen (drive on the field, play
   pop-up, small HOME, no AUTO button), final with Auto running, upcoming.
 - mock_mini.py draws them all; see the top of the file.

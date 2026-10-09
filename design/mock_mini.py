@@ -6,6 +6,7 @@ Scoreboard repo (assets/logos). Needs Pillow and the Inter font.
     python3 mock_mini.py opp    -> mini_redzone_opp.png (red zone pop-ups, ours vs theirs)
     python3 mock_mini.py plays  -> mini_plays.png (defense, turnover and punt animations)
     python3 mock_mini.py game   -> mini_game_extras.png (win chance bar, drive tracker options, close game, stats)
+    python3 mock_mini.py picker -> mini_picker.png (team picker on the mini itself)
     python3 mock_mini.py game2  -> mini_game_v2.png (picked: drive on the field, play pop-up, small HOME, no AUTO button)
 
 LOGOS points at Scoreboard/assets/logos (default: a Scoreboard checkout next
@@ -107,6 +108,120 @@ def remote_icon(d, cx, cy, col=WHITE):
 def finish(img, name):
     out = img.convert("RGB").resize((W, H), Image.LANCZOS)
     return out
+
+
+# ---------------------------------------------------------------- on-device team picker (Oct 7 idea)
+def _teams():
+    import re
+    src = open(os.path.join(OUT, "../firmware/mini/mn_teams.h")).read()
+    return re.findall(r'\{L_(\w+),"([^"]+)","([^"]+)",(\d+)\}', src)
+
+def check(d, x, y, on, size=22):
+    if on:
+        rbox(d, x, y, x + size, y + size, GREEN, r=5)
+        d.line([((x + 5) * S, (y + size / 2) * S), ((x + 9.5) * S, (y + size - 6) * S), ((x + size - 5) * S, (y + 6) * S)], fill=WHITE, width=3 * S)
+    else:
+        rbox(d, x, y, x + size, y + size, None, r=5, outline=GREY, width=2)
+
+def back_btn(d):
+    rbox(d, 6, 3, 96, 29, TILE, r=13, outline=EDGE)
+    d.polygon([(18 * S, 16 * S), (26 * S, 9 * S), (26 * S, 23 * S)], fill=WHITE)
+    text(d, 60, 16, "BACK", font(FB, 12), WHITE, "mm")
+
+def picker_home():
+    img = home().convert("RGBA").resize((W * S, H * S), Image.LANCZOS); d = ImageDraw.Draw(img)
+    rbox(d, 286, 3, 368, 29, BG, r=13)
+    rbox(d, 288, 3, 366, 29, TILE, r=13, outline=YELLOW, width=2)
+    d.line([(300 * S, 22 * S), (309 * S, 10 * S)], fill=WHITE, width=3 * S)   # a pencil
+    d.polygon([(298 * S, 25 * S), (299 * S, 20 * S), (302 * S, 23 * S)], fill=WHITE)
+    text(d, 337, 16, "EDIT", font(FB, 12), WHITE, "mm")
+    return img.convert("RGB").resize((W, H), Image.LANCZOS)
+
+def picker_leagues():
+    img, d = new()
+    text(d, 12, 16, "Pick your teams", font(FB, 16), WHITE, "lm")
+    text(d, 470, 16, "3 of 10 picked", font(FS, 13), GREY, "rm")
+    tiles = [("NFL", "1 picked"), ("COLLEGE", "1 picked"), ("MLB", "1 picked"), ("NHL", ""), ("NBA", "")]
+    for i, (nm, sub) in enumerate(tiles):
+        col, row = i % 3, i // 3
+        x0, y0 = 6 + col * 158, 34 + row * 143; x1, y1 = x0 + 152, y0 + 137; cx = (x0 + x1) / 2
+        rbox(d, x0, y0, x1, y1, TILE, r=14, outline=EDGE)
+        text(d, cx, y0 + 60, nm, font(FB, 28 if len(nm) < 5 else 22), WHITE, "mm")
+        if sub: text(d, cx, y0 + 100, sub, font(FB, 13), GREEN, "mm")
+        else: text(d, cx, y0 + 100, "none yet", font(FS, 13), DIM, "mm")
+    x0, y0 = 6 + 2 * 158, 34 + 143
+    rbox(d, x0, y0, x0 + 152, y0 + 137, (22, 70, 40), r=14, outline=GREEN, width=2)
+    d.line([((x0 + 54) * S, (y0 + 52) * S), ((x0 + 70) * S, (y0 + 68) * S), ((x0 + 100) * S, (y0 + 36) * S)], fill=WHITE, width=7 * S)
+    text(d, x0 + 76, y0 + 98, "DONE", font(FB, 24), WHITE, "mm")
+    text(d, x0 + 76, y0 + 120, "save and go home", font(FR, 12), (170, 220, 185), "mm")
+    return finish(img, "")
+
+PICKED = {"New York Giants", "LSU", "New York Yankees"}
+
+def picker_list(league="NFL", page=0, title="NFL"):
+    img, d = new()
+    back_btn(d)
+    text(d, 240, 16, title, font(FB, 16), WHITE, "mm")
+    text(d, 470, 16, "1 picked", font(FB, 13), GREEN, "rm")
+    names = [t[2] for t in _teams() if t[0] == league]
+    per = 10; pages = (len(names) + per - 1) // per
+    show = names[page * per:(page + 1) * per]
+    for i, nm in enumerate(show):
+        col, row = i // 5, i % 5
+        x0 = 6 + col * 202; y0 = 36 + row * 56
+        on = nm in PICKED
+        rbox(d, x0, y0, x0 + 196, y0 + 50, TILE_HI if on else TILE, r=10, outline=GREEN if on else EDGE, width=2 if on else 1)
+        check(d, x0 + 12, y0 + 14, on)
+        f = font(FS, 15 if len(nm) < 18 else 13)
+        text(d, x0 + 44, y0 + 25, nm, f, WHITE, "lm")
+    # page arrows on the right
+    for (y0, up) in ((36, True), (204, False)):
+        rbox(d, 414, y0, 474, y0 + 106, TILE, r=12, outline=EDGE)
+        cy = y0 + 53
+        if up: d.polygon([(444 * S, (cy - 16) * S), (424 * S, (cy + 10) * S), (464 * S, (cy + 10) * S)], fill=WHITE if page else DIM)
+        else: d.polygon([(444 * S, (cy + 16) * S), (424 * S, (cy - 10) * S), (464 * S, (cy - 10) * S)], fill=WHITE if page < pages - 1 else DIM)
+    text(d, 444, 172, f"{page + 1} of {pages}", font(FS, 13), GREY, "mm")
+    return finish(img, "")
+
+def picker_grid(league="NFL", page=0):
+    img, d = new()
+    back_btn(d)
+    text(d, 240, 16, "NFL", font(FB, 16), WHITE, "mm")
+    text(d, 470, 16, "1 picked", font(FB, 13), GREEN, "rm")
+    names = [t[2] for t in _teams() if t[0] == league]
+    per = 9; pages = (len(names) + per - 1) // per
+    for i, nm in enumerate(names[page * per:(page + 1) * per]):
+        col, row = i % 3, i // 3
+        x0 = 6 + col * 158; y0 = 36 + row * 80; x1 = x0 + 152; y1 = y0 + 74
+        on = nm in PICKED
+        rbox(d, x0, y0, x1, y1, TILE_HI if on else TILE, r=12, outline=GREEN if on else EDGE, width=2 if on else 1)
+        city, _, team = nm.rpartition(" ")
+        text(d, (x0 + x1) / 2, y0 + 28, team, font(FB, 17), WHITE, "mm")
+        text(d, (x0 + x1) / 2, y0 + 51, city, font(FR, 12), GREY, "mm")
+        if on: check(d, x1 - 26, y0 + 6, True, 18)
+    # bottom: page buttons
+    rbox(d, 6, 278, 120, 316, TILE, r=12, outline=EDGE)
+    d.polygon([(50 * S, 297 * S), (70 * S, 286 * S), (70 * S, 308 * S)], fill=DIM if page == 0 else WHITE)
+    rbox(d, 360, 278, 474, 316, TILE, r=12, outline=EDGE)
+    d.polygon([(430 * S, 297 * S), (410 * S, 286 * S), (410 * S, 308 * S)], fill=WHITE)
+    text(d, 240, 297, f"Page {page + 1} of {pages}", font(FS, 13), GREY, "mm")
+    return finish(img, "")
+
+def picker_college():
+    img, d = new()
+    back_btn(d)
+    text(d, 240, 16, "College football", font(FB, 16), WHITE, "mm")
+    text(d, 470, 16, "1 picked", font(FB, 13), GREEN, "rm")
+    confs = [("SEC", "1 picked"), ("BIG TEN", ""), ("ACC", ""), ("BIG 12", ""), ("OTHERS", "Notre Dame, Army, Navy")]
+    for i, (nm, sub) in enumerate(confs):
+        col, row = i % 3, i // 3
+        x0, y0 = 6 + col * 158, 34 + row * 143; x1, y1 = x0 + 152, y0 + 137; cx = (x0 + x1) / 2
+        rbox(d, x0, y0, x1, y1, TILE, r=14, outline=EDGE)
+        text(d, cx, y0 + 60, nm, font(FB, 26 if len(nm) < 6 else 22), WHITE, "mm")
+        if sub == "1 picked": text(d, cx, y0 + 100, sub, font(FB, 13), GREEN, "mm")
+        elif sub: text(d, cx, y0 + 100, sub, font(FR, 11), GREY, "mm")
+    return finish(img, "")
+
 
 # ---------------------------------------------------------------- home
 def home(rz=False):
@@ -587,6 +702,11 @@ elif len(sys.argv) > 1 and sys.argv[1] == "opp":
     shots = [("Ours: RED ZONE (good)", live(rz=True, alert=True)), ("Theirs, option A: DEFENSE!", live(rz=True, opp=True, bad="defense")),
              ("Theirs, option B: UH OH...", live(rz=True, opp=True, bad="uhoh"))]
     name = "mini_redzone_opp.png"
+elif len(sys.argv) > 1 and sys.argv[1] == "picker":
+    shots = [("1. Home: EDIT button (yellow)", picker_home()), ("2. Tap EDIT: pick a league", picker_leagues()),
+             ("3. College: pick a conference", picker_college()), ("Option A: list, 10 a page", picker_list()),
+             ("Option A: page 3 (Giants ticked)", picker_list(page=2)), ("Option B: tiles, 9 a page", picker_grid())]
+    name = "mini_picker.png"
 elif len(sys.argv) > 1 and sys.argv[1] == "game":
     shots = [("A. Play line switches to drive", opt_a()), ("B. Play pops up, then hides", opt_b()), ("C. Drive drawn on the field", opt_c()),
              ("Close game alert", close_game()), ("Tap the score: stats", stats_page())]

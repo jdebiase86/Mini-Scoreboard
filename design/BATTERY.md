@@ -26,3 +26,12 @@ fit, but confirm with a ruler photo.
 3. If it's reversed, do not force or plug it in. The two crimp pins can be
    swapped in the housing (lift the small tab, slide the pin out) - walk Joe
    through it step by step.
+
+## Oct 9: board and battery arrived (Joe's photos)
+- Board: BAT plug on the back by BOOT, marks "-" left and "+" right seen from
+  the back with that edge at the bottom - as expected. USB chip is a CH340C.
+- Battery measured on a ruler: about 67 x 36 mm, as the case is drawn for.
+  Protection board visible under the tape at the lead end. Red and black lead.
+- Still to do before the first plug-in: one photo of the battery plug held
+  right at the socket (lined up, not pushed in) with the "+" mark visible,
+  to check the red wire lands on "+" and the plug is the same size as the socket.
