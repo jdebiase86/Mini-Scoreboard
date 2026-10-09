@@ -20,6 +20,8 @@ built in the stages below.
   cable (and a USB-C to USB-A adapter on the Mac); for everyday power a
   USB-A charger brick. Confirmed Oct 9: lights right up from a car USB charger. Factory demo (LVGL
   widgets) shows normal colours, upright with the USB-C plug on the right.
+  Touch: a normal fingertip works fine, even through the factory protective
+  film, and swipes work (the demo's tabs follow a swipe).
 
 ## Decisions
 1. Wide layout (standing on a desk), dark look, rounded tiles, big buttons.
