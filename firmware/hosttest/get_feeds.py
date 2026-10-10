@@ -69,6 +69,34 @@ def trim(d):
     return {"events": keep}
 
 
+# the game pages (team stats, leaders so far, plays), trimmed to what mn_live.cpp reads: summary_<league>.json
+SUMMARIES = [("nfl", "401872980"), ("cfb", "401858487"), ("nba", "401898395"), ("nhl", "401892465"), ("mlb", "401907993")]
+
+
+def trim_summary(d):
+    out = {"boxscore": {"teams": []}, "leaders": [], "plays": []}
+    for t in d.get("boxscore", {}).get("teams", []):
+        out["boxscore"]["teams"].append({"team": {"abbreviation": t["team"].get("abbreviation")}, "homeAway": t.get("homeAway"),
+            "statistics": [{"name": x.get("name"), "displayValue": x.get("displayValue")} for x in t.get("statistics", []) if "name" in x]})
+    for t in d.get("leaders", []) or []:
+        out["leaders"].append({"team": {"abbreviation": t["team"].get("abbreviation")}, "leaders": [
+            {"name": c.get("name"), "leaders": [{"displayValue": c["leaders"][0].get("displayValue"),
+             "athlete": {"shortName": c["leaders"][0]["athlete"].get("shortName")}}]} for c in t.get("leaders", [])[:3] if c.get("leaders")]})
+    for p in (d.get("plays") or [])[-2:]:
+        out["plays"].append({"text": p.get("text"), "period": {"displayValue": (p.get("period") or {}).get("displayValue")},
+                             "clock": {"displayValue": (p.get("clock") or {}).get("displayValue")}})
+    return out
+
+
+for lg, ev in SUMMARIES:
+    url = BASE + LEAGUES[lg] + "/summary?event=" + ev
+    try:
+        d = trim_summary(json.loads(curl(url)))
+    except Exception as ex:
+        print("skip summary", lg, ex); continue
+    json.dump(d, open(os.path.join(HERE, "feeds", f"summary_{lg}.json"), "w"), separators=(",", ":"))
+    print("summary", lg, len(d["boxscore"]["teams"]), "teams")
+
 today = datetime.date.today()
 for lg, group, ahead in WANT:
     q = []

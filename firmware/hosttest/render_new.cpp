@@ -13,6 +13,7 @@
 #include "../mini/mn_keyboard.h"
 #include "../mini/mn_wifi.h"
 #include "../mini/mn_battery.h"
+#include "../mini/mn_live.h"
 #include <WiFi.h>
 #include <stdio.h>
 
@@ -84,11 +85,30 @@ static int idx(const char* key) {
   return 0;
 }
 
-static void showDetail(DetailKind k, int pick, const char* name) {
+// what the game's own page told us (real pages, trimmed: feeds/summary_*.json)
+static LiveInfo liveFor(int pick, const char* league) {
+  static LiveInfo li;
+  char path[80];
+  snprintf(path, sizeof(path), "feeds/summary_%s.json", league);
+  FileSource src(path);
+  li = LiveInfo();
+  if (src.f) liveParse(src, fakeG[pick], li);
+  return li;
+}
+
+static void showDetail(DetailKind k, int pick, const char* name, const char* liveLeague = nullptr) {
   Game g = fakeG[pick];
   detailOpen(k);
-  detailDraw(k, settings.picks[pick], g, fakeK[pick]);
+  static LiveInfo li;
+  if (liveLeague) li = liveFor(pick, liveLeague);
+  detailDraw(k, settings.picks[pick], g, fakeK[pick], liveLeague ? &li : nullptr);
   save(name);
+}
+
+static void makeLive(Game& g, int away, int home, int period, const char* clock, const char* detail = "") {
+  g.state = GS_LIVE; g.period = period;
+  snprintf(g.clock, sizeof(g.clock), "%s", clock); snprintf(g.detail, sizeof(g.detail), "%s", detail);
+  g.away.score = away; g.home.score = home; g.away.hasScore = g.home.hasScore = true;
 }
 
 int main() {
@@ -143,6 +163,42 @@ int main() {
   Game noDet = live; noDet.det = Details();
   fakeG[jax] = noDet; showDetail(DK_TEAMS, jax, "d14_teams_loading");
 
+  // 3b. the new game-screen bottoms, the LAST PLAY button, live stats and leaders (0.6)
+  settings.setPicksFromString("NFL:DAL,NFL:JAX,CFB:IOWA,MLB:CLE,NHL:DET,NBA:DAL,NHL:SEA,NBA:HOU");
+  for (int i = 0; i < settings.npicks; i++) { fakeK[i] = true; lookup(settings.picks[i], fakeG[i]); }
+  int jax2 = idx("NFL:JAX"), dal2 = idx("NFL:DAL"), iowa2 = idx("CFB:IOWA"), cle2 = idx("MLB:CLE"), det2 = idx("NHL:DET"), mav2 = idx("NBA:DAL");
+  bPct = 72; bChg = false;
+  // (the pictures' made-up live games get made-up scores by period, as ESPN sends them once a game is on)
+  auto fakeLines = [](Game& g, std::initializer_list<int> a, std::initializer_list<int> h) {
+    g.det.has = true; g.det.away.nLines = g.det.home.nLines = 0;
+    for (int v : a) g.det.away.lines[g.det.away.nLines++] = v;
+    for (int v : h) g.det.home.lines[g.det.home.nLines++] = v;
+    g.det.away.starter[0] = g.det.home.starter[0] = 0;
+    for (auto& l : g.det.away.lead) l = Leader(); for (auto& l : g.det.home.lead) l = Leader();
+  };
+  Game bb = fakeG[mav2]; makeLive(fakeG[mav2], 88, 92, 3, "4:21"); fakeG[mav2].det = bb.det; fakeLines(fakeG[mav2], {27, 38, 23}, {30, 31, 31});
+  playGame(settings.picks[mav2], fakeG[mav2], true, -1, PG_OPEN); save("e01_basketball_live");
+  Game hk = fakeG[det2]; makeLive(fakeG[det2], 2, 1, 2, "8:31"); fakeG[det2].det = hk.det; fakeLines(fakeG[det2], {1, 1}, {0, 1});
+  playGame(settings.picks[det2], fakeG[det2], true, -1, PG_OPEN); save("e02_hockey_live");
+  playGame(settings.picks[cle2], fakeG[cle2], true, -1, PG_OPEN); save("e03_baseball_before");
+  playGame(settings.picks[jax2], fakeG[jax2], true, -1, PG_OPEN); save("e04_football_before");
+  playGame(settings.picks[dal2], fakeG[dal2], true, -1, PG_OPEN); save("e05_football_final");
+  Game fb = fakeG[jax2]; fakeG[jax2] = live; fakeG[jax2].det = fb.det;
+  playGame(settings.picks[jax2], fakeG[jax2], true, -1, PG_OPEN); save("e06_football_live_button");
+  // the saved game pages are HOU at DAL and SEA at DET: draw those two with the same teams
+  auto asGame = [&](int pick, const char* away, const char* home) {
+    snprintf(fakeG[pick].away.abbr, 8, "%s", away); snprintf(fakeG[pick].home.abbr, 8, "%s", home);
+  };
+  asGame(mav2, "HOU", "DAL"); asGame(det2, "SEA", "DET");
+  showDetail(DK_STATS, mav2, "e07_stats_basketball", "nba");
+  showDetail(DK_STATS, det2, "e08_stats_hockey", "nhl");
+  Game cf = fakeG[iowa2];
+  showDetail(DK_STATS, iowa2, "e09_stats_college", "cfb");
+  showDetail(DK_TEAMS, iowa2, "e10_teams_live_leaders", "cfb");
+  showDetail(DK_PLAY, mav2, "e11_last_play_basketball", "nba");
+  showDetail(DK_PLAY, det2, "e12_last_play_hockey", "nhl");
+  showDetail(DK_STATS, cle2, "e13_stats_baseball_none", "mlb");
+
   // 4. Wi-Fi list, the action sheet, the keyboard
   WiFi.found = {{"Home Wi-Fi", -48, 3}, {"Phone hotspot", -60, 3}, {"Coffee Shop Guest", -66, 0}, {"Neighbour 2G", -78, 3},
                 {"Airport Free WiFi", -82, 0}, {"Office", -85, 3}, {"Printer-Direct", -90, 3}, {"Guest", -91, 3}};
@@ -165,5 +221,9 @@ int main() {
   fakeMs = 1000;
   WiFi.st = WL_DISCONNECTED;
   uiJoining("Phone hotspot"); save("w07_joining");
+  // joined and saved at once, and the note after forgetting the one you're on
+  settings.nets[0] = {"Home Wi-Fi", "x"}; settings.nets[1] = {"Phone hotspot", "x"}; settings.nnets = 2;
+  WiFi.joined = "Phone hotspot"; WiFi.st = WL_CONNECTED;
+  wifiStart(); wifiLoop(); wifiTap(240, 62 + 38 + 18); wifiTap(240, 187); save("w08_forgot_current");
   return 0;
 }

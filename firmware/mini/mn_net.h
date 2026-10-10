@@ -3,6 +3,7 @@
 #pragma once
 #include <Arduino.h>
 #include "mn_game.h"
+#include "mn_live.h"
 
 void netStart();                        // once Wi-Fi is up (and the clock set)
 void netPicksChanged();                 // the favourites were edited: start over
@@ -14,3 +15,8 @@ bool netGame(int pick, Game& out);
 // score by period, starters, stadium) for a while. Call it when the card opens.
 void netWantDetails(int pick);
 bool mnWifiUp();                        // joined to a network right now
+// The live page of favourite `pick` (team stats, leaders so far, last play):
+// call netWantLive while a card that needs it is open; netLive gives what has
+// arrived (false = nothing yet).
+void netWantLive(int pick);
+bool netLive(int pick, LiveInfo& out);

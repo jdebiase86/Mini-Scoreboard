@@ -16,6 +16,9 @@ struct ByteSource {
 // day: "YYYYMMDD" for another day (MLB, NHL, NBA), or nullptr for today / this week.
 String espnUrl(League l, int group, const char* day);
 
+// The per-game page (team stats, leaders so far, plays): big, so read it with mn_live
+String espnSummaryUrl(League l, const char* id);
+
 // Reads a feed into doc, keeping only what the mini needs (about 1/20th).
 // rich: also keep the extras for the details cards (leaders, score by
 // period, starters, home / road records, stadium).

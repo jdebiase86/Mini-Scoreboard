@@ -29,7 +29,7 @@ String playStatus(const Game& g);
 void playTeamColours(const Game& g, uint16_t& away, uint16_t& home);
 
 // What a tap on the game screen is on (when the game's details can be shown)
-enum PlayHit { PH_NONE = 0, PH_CARD, PH_TEAMS, PH_SIT };
+enum PlayHit { PH_NONE = 0, PH_CARD, PH_TEAMS, PH_SIT, PH_STATS, PH_LASTPLAY };
 PlayHit playGameHit(int x, int y, const Game& g, bool known);
 // Brings the last-play card back for `ms` (after its details were looked at)
 void playCardHold(const Game& g, uint32_t ms);
