@@ -29,20 +29,27 @@ for hx, hy in ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6)):
     plug = trimesh.creation.cylinder(radius=2.5, height=(-7.2 - (BOT + 0.5)), sections=32)
     plug.apply_translation([hx, hy, (-7.2 + BOT + 0.5) / 2])
     acc = acc + M(plug)
-# 2. stylus tube on the y = -5 long side: 8 x 9 mm bar, 4.6 mm bore, open at the right end,
-#    2 mm cap at the left end with a 2.6 mm hole to push the stylus out
-RY0, RY1, RZ0, RZ1 = -13.0, -5.0, BOT + 2.6, BOT + 11.6
-bar = trimesh.creation.box(extents=[121.1, RY1 - RY0 + 0.6, RZ1 - RZ0]); bar.apply_translation([55.55, (RY0 + RY1 - 0.6) / 2 + 0.3 - 0.3, (RZ0 + RZ1) / 2])
-rzc, ryc = (RZ0 + RZ1) / 2, (RY0 + RY1) / 2
-bore = trimesh.creation.cylinder(radius=2.3, height=121.1 - 2.0 + 0.2, sections=48); bore.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))
-bore.apply_translation([55.55 + 1.0 + 0.1, ryc, rzc])
+plain = acc
+# 2. stylus tube on the top (y = 66.15) long side, so a stand under or behind the case never touches it:
+#    8 x 9 mm bar, a bore that narrows from 4.4 mm at the open right end to 3.9 mm at the closed
+#    left end (the stylus wedges tight as it goes in), a 2.6 mm hole at the left to push it out
+RY0, RY1, RZ0, RZ1 = 66.15 - 0.6, 66.15 + 8.0, BOT + 2.6, BOT + 11.6
+bar = trimesh.creation.box(extents=[121.1, RY1 - RY0, RZ1 - RZ0]); bar.apply_translation([55.55, (RY0 + RY1) / 2, (RZ0 + RZ1) / 2])
+rzc, ryc = (RZ0 + RZ1) / 2, 66.15 + 4.0
+def ring(x, r):
+    t = np.linspace(0, 2 * np.pi, 48, endpoint=False)
+    return np.c_[np.full_like(t, x), ryc + r * np.cos(t), rzc + r * np.sin(t)]
+bore = trimesh.convex.convex_hull(np.vstack([ring(-3.0, 1.95), ring(116.2, 2.2)]))
 push = trimesh.creation.cylinder(radius=1.3, height=6, sections=24); push.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])); push.apply_translation([-4.0, ryc, rzc])
-acc = acc + M(bar) - M(bore) - M(push)
-mm = acc.to_mesh()
-base = trimesh.Trimesh(mm.vert_properties[:, :3], mm.tri_verts)
+with_tube = plain + M(bar) - M(bore) - M(push)
+def tomesh(m):
+    mm = m.to_mesh()
+    return trimesh.Trimesh(mm.vert_properties[:, :3], mm.tri_verts)
+base_plain = tomesh(plain); base = tomesh(with_tube)
+base_plain.export(os.path.join(OUT, "base_plain.stl"))
 base.export(os.path.join(OUT, "base_final.stl"))
 lid = trimesh.load(LID); lid.export(os.path.join(OUT, "lid.stl"))
-print("base watertight", base.is_watertight, "size", np.round(base.bounds[1] - base.bounds[0], 1).tolist())
+print("base watertight", base.is_watertight, base_plain.is_watertight, "size", np.round(base.bounds[1] - base.bounds[0], 1).tolist())
 
 # ---- the picture
 WHITE = (0.95, 0.95, 0.96); BLUE = (0.3, 0.5, 0.95); GREEN = (0.25, 0.6, 0.3); DARK = (0.12, 0.13, 0.17)
@@ -65,9 +72,9 @@ def lab(im, t):
 kw = dict(W=760, H=520, scale=5.0)
 lid_up = lid.copy(); lid_up.apply_translation([0, 0, 22])
 a = lab(render([(base, WHITE), (bat, BLUE), (spk, GREY)] + ins, elev=55, azim=-25, center=(55, 30, -12), **kw), "Base from above: battery (blue), speaker (grey)")
-b = lab(render([(base, WHITE), (stylus(18), RED)], elev=-50, azim=-25, center=(55, 30, -12), **kw), "Back: speaker grille, stylus tube (stylus in red)")
-c = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(0), RED)], elev=14, azim=-28, center=(55, 30, -9), **kw), "Closed, stylus parked")
-d = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(30), RED)], elev=30, azim=-125, center=(55, 30, -9), **kw), "Stylus pulled out the right end")
+b = lab(render([(base, WHITE), (stylus(18), RED)], elev=-50, azim=-25, center=(55, 30, -12), **kw), "Back: speaker grille (tube is on the far edge)")
+c = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(0), RED)], elev=22, azim=150, center=(55, 30, -9), **kw), "Closed, from the top edge: stylus parked")
+d = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(30), RED)], elev=30, azim=125, center=(55, 30, -9), **kw), "Stylus pulled out the right end")
 sheet = Image.new("RGB", (a.width * 2 + 30, a.height * 2 + 30), "white")
 for i, im in enumerate([a, b, c, d]): sheet.paste(im, ((i % 2) * (a.width + 30), (i // 2) * (a.height + 30)))
 sheet.save(os.path.join(OUT, "case_v1.png")); print("ok")
