@@ -325,6 +325,11 @@ static void watchdog() {
   static uint32_t chk = 0, kicked = 0;
   if (millis() - chk < 10000) return;
   chk = millis();
+  if (netMemWaitSecs() > 90 && millis() > 120000) {   // no memory for a download for a minute and a half: a restart clears it
+    mnLog("watchdog: no memory for downloads for %u s - restarting", (unsigned)netMemWaitSecs());
+    delay(300);
+    ESP.restart();
+  }
   if (WiFi.status() != WL_CONNECTED || !settings.npicks || millis() < 300000) return;
   uint32_t worst = 0;
   for (int i = 0; i < settings.npicks; i++) {

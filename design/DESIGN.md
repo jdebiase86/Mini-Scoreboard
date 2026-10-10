@@ -345,3 +345,13 @@ optional): a GAMES tile after the favourites pages.
 - High scores and progress (levels, stars, unlocks) kept per game in the
   board's settings. Needs a touch drag/flick reading (speed and angle) added to
   mn_touch. Everything draws straight to the screen; no big buffers.
+
+## v0.8 hotfix (Oct 10): 0.7 stopped fetching scores on the board
+The 0.7 log showed one good download, then "biggest block 39 KB" and "waiting
+for memory" forever (the guard wanted 48 KB). The compressed downloads (their
+44 KB set aside before each connection) had fragmented the memory the first time they ran
+on a real board. 0.8: compressed downloads off (USE_GZIP in mn_net.cpp; they switch
+themselves off if the answer won't unpack), the guard is 30 KB, and the
+watchdog restarts the mini after 90 s of waiting for memory. The game page is
+read plain, every 30 s, only while a card is open. Compressed downloads can come back
+once they are checked on the board with a log.

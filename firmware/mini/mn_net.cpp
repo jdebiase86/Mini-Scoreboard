@@ -57,7 +57,9 @@ struct NetReader : ByteSource {
 // ----------------------------------------------------------------- state
 // A download needs about 45 KB in a few pieces; the biggest free block is only 65 to 70 KB after a
 // while (logos fragment the memory), so asking for more than this left the scores frozen.
-static const size_t MIN_BLOCK = 48000;
+static const size_t MIN_BLOCK = 30000;
+static volatile uint32_t memWaitSince = 0;   // when the downloads began waiting for memory (0 = not waiting)
+uint32_t netMemWaitSecs() { return memWaitSince ? (millis() - memWaitSince) / 1000 : 0; }
 
 struct Slot {
   int team = -1;             // TEAMS index this slot is for
@@ -139,14 +141,20 @@ static void rebuild() {
 typedef bool (*Reader)(ByteSource& src, void* ctx);
 static uint32_t gzOffUntil = 0;
 static int gzMisses = 0;
+// Compressed downloads were never tried on the real board before 0.7 and the scores stopped
+// arriving with them on, so they are off until they can be checked there (the plain download is
+// what 0.6 used). Switch on to try again; if the compressed answer fails to read twice it
+// switches itself off for an hour.
+static const bool USE_GZIP = false;
 
 static bool fetchStream(const String& url, Reader read, void* ctx, bool needGz = false) {
+  if (!USE_GZIP) needGz = false;
   if (!mnTlsTake(20000)) return false;
   bool ok = false;
   for (int attempt = 0; attempt < 2 && !ok; attempt++) {
     // attempt 0: memory set aside first. attempt 1: (only if the first couldn't connect) plain, or
     // for the game page, the compressed memory taken after the connection is up
-    const bool gzAllowed = (int32_t)(millis() - gzOffUntil) >= 0;
+    const bool gzAllowed = USE_GZIP && (int32_t)(millis() - gzOffUntil) >= 0;
     GzSource* gz = attempt == 0 && gzAllowed ? new GzSource() : nullptr;
     if (gz && !gz->ok()) { delete gz; gz = nullptr; }
     if (attempt == 0 && !gz && needGz) continue;   // no room set aside: try the late way
@@ -190,6 +198,9 @@ static bool fetchStream(const String& url, Reader read, void* ctx, bool needGz =
     delete gz;
     if (attempt == 0 && usedGz && !reached) {   // the memory set aside left too little to connect
       if (++gzMisses >= 3) { gzOffUntil = millis() + 600000; gzMisses = 0; mnLog("scores: compressed downloads off for 10 minutes"); }
+    } else if (usedGz && reached && !ok) {      // an answer came but wouldn't unpack: plain, right away
+      if (++gzMisses >= 2) { gzOffUntil = millis() + 3600000; gzMisses = 0; mnLog("scores: compressed downloads off for an hour"); }
+      if (!needGz) continue;
     } else if (ok) {
       gzMisses = 0;
     }
@@ -257,7 +268,7 @@ static bool liveStep() {
     bool changed = !liveBuf.has || liveBuf.sig != fresh.sig;
     liveBuf = fresh;
     if (changed) version++;
-    liveNextAt = millis() + (g.state == GS_LIVE ? 12000 : 300000);   // a final doesn't change
+    liveNextAt = millis() + (g.state == GS_LIVE ? (USE_GZIP ? 12000 : 30000) : 300000);   // a final doesn't change
   } else {
     liveNextAt = millis() + 8000;
   }
@@ -300,13 +311,15 @@ static void netTask(void*) {
       if (slots[i].team >= 0 && (int32_t)(ms - slots[i].nextAt) >= 0 &&
           (pick < 0 || (int32_t)(slots[i].nextAt - slots[pick].nextAt) < 0))
         pick = i;
-    if (pick < 0) continue;
-    if (ESP.getMaxAllocHeap() < MIN_BLOCK) {   // not enough room for a download: wait (restarting would clear it)
+    if (pick < 0) { memWaitSince = 0; continue; }
+    if (ESP.getMaxAllocHeap() < MIN_BLOCK) {   // not enough room for a download: wait (the watchdog restarts if it lasts)
+      if (!memWaitSince) memWaitSince = millis() | 1;
       static uint32_t loggedAt = 0;
       if (millis() - loggedAt > 30000) { loggedAt = millis(); mnLog("scores: waiting for memory (biggest block %u KB)", (unsigned)(ESP.getMaxAllocHeap() / 1024)); }
       delay(1000);
       continue;
     }
+    memWaitSince = 0;
 
     const League lg = TEAMS[slots[pick].team].league;
     const int group = TEAMS[slots[pick].team].group;
