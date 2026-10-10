@@ -462,6 +462,18 @@ Next: score alerts, idle clock, what's new screen, next five games, friends mode
 dots and boxes, checkers, air hockey, tap duels, with "Who's playing?" names and a tally per pair); battery calibration once
 the history has a full charge and a plug-in.
 
+## Animations and always-on (Oct 11, Joe: build them; mock-ups design/mini_anims.png, mock_anim.py)
+Joe wants all of them: the nine play banners (design/mini_plays.png), the red zone pop-ups (mini_redzone_opp.png: ours red,
+theirs caution tape), and for big moments sunbursts that are not overdone. Added in the mock-up: the field goal (kick
+lined up, ball in the air, through the uprights with IT'S GOOD!, NO GOOD wide right with caution tape), touchdown, their
+touchdown (caution tape), hockey goal (red goal lights), home run, final win (confetti). Rule: good for us = bright team
+colours and rays; bad (they score, we turn it over, a missed kick) = black caution tape. Sound comes later (the speaker is
+in the mail): touchdown horn, goal horn, crowd, kick thud.
+Dim on battery: stays fully bright while a game is live on the screen (setting: do not dim during a live game on
+battery), otherwise dims after a minute; the dim level goes from level/12 to about level/25 (a fifth as bright).
+Detecting moments: ESPN's last-play text, score changes and down / possession changes; a moment can be missed if two
+happen between checks (live checks every 5 s, 8 s in data saver).
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
