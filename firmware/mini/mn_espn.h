@@ -17,7 +17,9 @@ struct ByteSource {
 String espnUrl(League l, int group, const char* day);
 
 // Reads a feed into doc, keeping only what the mini needs (about 1/20th).
-bool espnLoad(ByteSource& src, JsonDocument& doc);
+// rich: also keep the extras for the details cards (leaders, score by
+// period, starters, home / road records, stadium).
+bool espnLoad(ByteSource& src, JsonDocument& doc, bool rich = false);
 
 // The game to show for a favourite (TEAMS index): live first, else a recent
 // final, else the next one to start. false = none in this feed.

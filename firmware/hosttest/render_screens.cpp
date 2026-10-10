@@ -5,6 +5,8 @@
 #include "../mini/mn_ui.h"
 #include "../mini/mn_settings.h"
 #include "../mini/mn_picker.h"
+#include "../mini/mn_net.h"
+#include "../mini/mn_battery.h"
 #include <string.h>
 #include <chrono>
 #include <thread>
@@ -16,10 +18,17 @@ uint32_t millis() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count() + 100000;
 }
 void delay(uint32_t) {}
-void Settings::save() {}
 static const char* const LK[L_COUNT] = {"NFL", "CFB", "MLB", "NHL", "NBA"};
 String teamKey(int i) { return String(LK[TEAMS[i].league]) + ":" + TEAMS[i].abbr; }
 void mnLog(const char*, ...) {}
+time_t mnNow;
+// no scores here: the home tiles show "Loading"
+bool netGame(int, Game&) { return false; }
+uint32_t netVersion() { return 1; }
+bool mnWifiUp() { return true; }
+bool batPresent() { return true; }
+int batPercent() { return 78; }
+bool batCharging() { return false; }
 
 
 static void save(const char* name) {
@@ -68,9 +77,7 @@ int main() {
   uiJoining("Home Wi-Fi"); save("03_joining");
   uiSetup("Mini-Scoreboard-3F2A", true, "Home Wi-Fi"); save("04_cant_join");
   uiConnected("192.168.1.42"); save("05_connected");
-  uiHome(0); save("06_home");
-  uiTeam(settings.picks[0]); save("07_team");
-  uiTeam(-1); save("08_auto");
+  mnNow = 1791648000; uiHome(0); save("06_home");
   uiUpdating(40, "0.2"); save("09_updating");
   settings.setPicksFromString("NFL:DAL,CFB:LSU");
   uiHome(0); save("10_home_two");

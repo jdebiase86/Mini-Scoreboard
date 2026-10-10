@@ -8,6 +8,12 @@
 #include <string>
 #include <stdlib.h>
 #include <ctype.h>
+#include <algorithm>
+using std::min;
+using std::max;
+#ifndef constrain
+#define constrain(v, lo, hi) ((v) < (lo) ? (lo) : (v) > (hi) ? (hi) : (v))
+#endif
 
 #ifndef DEG_TO_RAD
 #define DEG_TO_RAD 0.017453292519943295f
@@ -19,6 +25,7 @@ class String : public std::string {
   String(const char* s) : std::string(s ? s : "") {}
   String(const std::string& s) : std::string(s) {}
   String(int v) : std::string(std::to_string(v)) {}
+  String(char c) : std::string(1, c) {}
   unsigned length() const { return size(); }
   String substring(int a, int b = -1) const {
     int n = size();
@@ -31,6 +38,7 @@ class String : public std::string {
   int indexOf(char c, int from = 0) const { auto p = find(c, from); return p == npos ? -1 : (int)p; }
   int indexOf(const String& s) const { auto p = find(s); return p == npos ? -1 : (int)p; }
   void trim() { erase(0, find_first_not_of(" \t\r\n")); erase(find_last_not_of(" \t\r\n") + 1); }
+  void remove(unsigned i) { if (i < size()) erase(i); }
   void toUpperCase() { for (auto& c : *this) c = toupper((unsigned char)c); }
   void toLowerCase() { for (auto& c : *this) c = tolower((unsigned char)c); }
   long toInt() const { return atol(c_str()); }

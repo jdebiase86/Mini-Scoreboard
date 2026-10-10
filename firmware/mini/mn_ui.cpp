@@ -5,6 +5,7 @@
 #include "mn_net.h"
 #include "mn_play.h"
 #include "mn_game.h"
+#include "mn_battery.h"
 #include <time.h>
 
 // ------------------------------------------------------------------ helpers
@@ -91,8 +92,14 @@ void uiSetup(const String& apName, bool cantJoin, const String& ssid) {
   tile(312, 70, 468, 226, C_WHITE, C_WHITE, 12);
   String q = "WIFI:T:nopass;S:" + apName + ";;";
   lcd.qrcode(q.c_str(), 322, 80, 136, 3);
-  text(F_S13, "Scan me", 390, 246, C_GREY, C_BG, middle_center);
+  text(F_S13, "Scan me", 390, 244, C_GREY, C_BG, middle_center);
+  // or pick the network right here on the mini
+  tile(312, 262, 468, 304, C_TILE, C_EDGE, 12);
+  text(F_B12, "WI-FI LIST", 390, 275, C_WHITE, C_TILE, middle_center);
+  text(F_S13, "pick it on this screen", 390, 292, C_GREY, C_TILE, middle_center);
 }
+
+bool uiSetupWifiHit(int x, int y) { return x >= 304 && y >= 254; }
 
 void uiJoining(const String& ssid) {
   static uint32_t lastCall = 0;
@@ -167,8 +174,8 @@ void uiHomeClock(bool force) {
   char s[24];
   int h = lt.tm_hour % 12;
   snprintf(s, sizeof(s), "%s %d:%02d %s", DAYS[lt.tm_wday % 7], h ? h : 12, lt.tm_min, lt.tm_hour < 12 ? "AM" : "PM");
-  lcd.fillRect(150, 4, 136, 26, C_BG);
-  text(F_S13, s, 218, 16, C_GREY, C_BG, middle_center);
+  lcd.fillRect(108, 4, 146, 26, C_BG);
+  text(F_S13, s, 181, 16, C_GREY, C_BG, middle_center);
 }
 
 // What sits in each of a page's six slots: an index into settings.picks,
@@ -214,14 +221,29 @@ static void arrowIcon(int cx, int cy, uint16_t col) {   // a fat right arrow
 
 // back button where "My Teams" sits on the first page
 static const int BK_X0 = 6, BK_Y0 = 3, BK_X1 = 112, BK_Y1 = 29;
-// EDIT (the team picker) in the first page's top bar, left of where BOARD goes
-static const int ED_X0 = 292, ED_Y0 = 3, ED_X1 = 370, ED_Y1 = 29;
+// EDIT (the team picker) and Wi-Fi in the first page's top bar, left of the battery
+static const int ED_X0 = 258, ED_Y0 = 3, ED_X1 = 330, ED_Y1 = 29;
+static const int WF_X0 = 336, WF_Y0 = 3, WF_X1 = 388, WF_Y1 = 29;
 
 static void editButton() {
   tile(ED_X0, ED_Y0, ED_X1, ED_Y1, C_TILE, C_EDGE, 13);
   lcd.drawWideLine(ED_X0 + 13, 22, ED_X0 + 21, 10, 1.6f, C_WHITE);   // a pencil
   lcd.fillTriangle(ED_X0 + 10, 25, ED_X0 + 11, 20, ED_X0 + 14, 23, C_WHITE);
-  text(F_B12, "EDIT", ED_X0 + 49, 16, C_WHITE, C_TILE, middle_center);
+  text(F_B12, "EDIT", ED_X0 + 46, 16, C_WHITE, C_TILE, middle_center);
+}
+
+static bool wifiShown = true;
+
+void uiHomeWifiIcon(bool force) {
+  bool up = mnWifiUp();
+  if (!force && up == wifiShown) return;
+  wifiShown = up;
+  uint16_t col = up ? C_WHITE : C_RED;
+  tile(WF_X0, WF_Y0, WF_X1, WF_Y1, C_TILE, up ? C_EDGE : C_RED, 13);
+  int cx = (WF_X0 + WF_X1) / 2, cy = 21;
+  for (int r = 1; r <= 3; r++) lcd.fillArc(cx, cy, r * 5 + 2, r * 5 - 1, 232, 308, col);
+  lcd.fillCircle(cx, cy - 1, 2, col);
+  if (!up) lcd.drawWideLine(cx - 9, 8, cx + 9, 24, 1.6f, C_RED);
 }
 
 void uiHome(int page) {
@@ -230,14 +252,16 @@ void uiHome(int page) {
   for (int k = 0; k < 6; k++) tilePick[k] = -1;
   lcd.fillScreen(C_BG);
   uiHomeClock(true);
+  uiBattery(true);
   if (page == 0) {
     text(F_B16, "My Teams", 12, 16, C_WHITE, C_BG, middle_left);
     editButton();
+    uiHomeWifiIcon(true);
   } else {
     tile(BK_X0, BK_Y0, BK_X1, BK_Y1, C_TILE, C_EDGE, 13);
     lcd.fillTriangle(BK_X0 + 12, 16, BK_X0 + 20, 9, BK_X0 + 20, 23, C_WHITE);
     text(F_B12, "MY TEAMS", BK_X0 + 64, 16, C_WHITE, C_TILE, middle_center);
-    text(F_S13, "More teams", 468, 16, C_GREY, C_BG, middle_right);
+    text(F_S13, "More teams", 384, 16, C_GREY, C_BG, middle_right);
   }
   if (!settings.npicks) {
     centre(F_B24, "Pick your teams", 130, C_WHITE);
@@ -300,7 +324,8 @@ void uiHomeRefresh(int page) {
 
 int uiHomeHit(int page, int x, int y) {
   if (page > 0 && x < BK_X1 + 16 && y < BK_Y1 + 6) return HIT_BACK;
-  if (page == 0 && x >= ED_X0 - 10 && x < ED_X1 + 4 && y < ED_Y1 + 4) return HIT_EDIT;
+  if (page == 0 && x >= ED_X0 - 6 && x < ED_X1 + 3 && y < ED_Y1 + 4) return HIT_EDIT;
+  if (page == 0 && x >= WF_X0 - 3 && x < WF_X1 + 6 && y < WF_Y1 + 4) return HIT_WIFI;
   int slot[6];
   int n = pageSlots(page, slot);
   for (int k = 0; k < n; k++) {
@@ -312,8 +337,9 @@ int uiHomeHit(int page, int x, int y) {
 }
 
 void uiTileFlash(int page, int hit) {
-  if (hit == HIT_BACK || hit == HIT_EDIT) {
+  if (hit == HIT_BACK || hit == HIT_EDIT || hit == HIT_WIFI) {
     if (hit == HIT_BACK) lcd.drawRoundRect(BK_X0, BK_Y0, BK_X1 - BK_X0, BK_Y1 - BK_Y0, 13, C_WHITE);
+    else if (hit == HIT_WIFI) lcd.drawRoundRect(WF_X0, WF_Y0, WF_X1 - WF_X0, WF_Y1 - WF_Y0, 13, C_WHITE);
     else lcd.drawRoundRect(ED_X0, ED_Y0, ED_X1 - ED_X0, ED_Y1 - ED_Y0, 13, C_WHITE);
     delay(90);
     return;
@@ -327,6 +353,37 @@ void uiTileFlash(int page, int hit) {
     for (int w = 0; w < 2; w++) lcd.drawRoundRect(x0 + w, y0 + w, x1 - x0 - 2 * w, y1 - y0 - 2 * w, 14 - w, C_WHITE);
   }
   delay(90);
+}
+
+// ----------------------------------------------------------------- battery
+static int battShown = -2;
+static bool battChg = false;
+
+static void batteryIcon(int x, int y, int pct, bool chg, uint16_t col) {   // 30 x 15, x/y top left
+  uint16_t edge = chg ? C_GREEN : C_WHITE;
+  lcd.drawRoundRect(x, y, 31, 15, 3, edge);
+  lcd.drawRoundRect(x + 1, y + 1, 29, 13, 2, edge);
+  lcd.fillRect(x + 31, y + 4, 3, 7, edge);
+  int w = max(2, 24 * pct / 100);
+  lcd.fillRoundRect(x + 4, y + 4, w, 7, 1, col);
+  if (chg) {   // a bolt
+    lcd.fillTriangle(x + 17, y + 1, x + 10, y + 9, x + 16, y + 9, C_WHITE);
+    lcd.fillTriangle(x + 14, y + 14, x + 21, y + 6, x + 15, y + 6, C_WHITE);
+  }
+}
+
+void uiBattery(bool force) {
+  int pct = batPresent() ? batPercent() : -1;
+  bool chg = batCharging();
+  if (!force && pct == battShown && chg == battChg) return;
+  battShown = pct;
+  battChg = chg;
+  lcd.fillRect(392, 3, 86, 26, C_BG);
+  if (pct < 0) return;   // no battery: nothing to show
+  uint16_t amber = rgb(255, 176, 32);
+  uint16_t col = chg || pct > 20 ? C_GREEN : pct > 10 ? amber : C_RED;
+  batteryIcon(440, 8, pct, chg, col);
+  text(F_B12, String(pct) + "%", 434, 16, pct <= 20 && !chg ? col : C_WHITE, C_BG, middle_right);
 }
 
 // ------------------------------------------------------------ HOME button

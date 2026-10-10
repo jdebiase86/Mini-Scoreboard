@@ -57,6 +57,18 @@ void Settings::load() {
   p.begin(NS, true);
   ssid = p.getString("ssid", "");
   pass = p.getString("pass", "");
+  nnets = 0;
+  String all = p.getString("nets", "");
+  for (int at = 0; at < (int)all.length() && nnets < MAX_NETS;) {
+    int e = all.indexOf('\x1e', at);
+    if (e < 0) e = all.length();
+    String rec = all.substring(at, e);
+    int u = rec.indexOf('\x1f');
+    if (u > 0) { nets[nnets].ssid = rec.substring(0, u); nets[nnets].pass = rec.substring(u + 1); nnets++; }
+    at = e + 1;
+  }
+  if (!nnets && ssid.length()) { nets[0].ssid = ssid; nets[0].pass = pass; nnets = 1; }   // from before there was a list
+  if (nnets) { ssid = nets[0].ssid; pass = nets[0].pass; }
   setPicksFromString(p.getString("teams", ""));
   tz = p.getInt("tz", 0);
   if (tz < 0 || tz >= NTZ) tz = 0;
@@ -73,6 +85,9 @@ void Settings::save() {
   p.begin(NS, false);
   p.putString("ssid", ssid);
   p.putString("pass", pass);
+  String all;
+  for (int i = 0; i < nnets; i++) { all += nets[i].ssid; all += '\x1f'; all += nets[i].pass; all += '\x1e'; }
+  p.putString("nets", all);
   p.putString("teams", picksString());
   p.putInt("tz", tz);
   p.putInt("bright", bright);
@@ -101,5 +116,29 @@ void Settings::forgetCal() {
 void Settings::forgetWifi() {
   ssid = "";
   pass = "";
+  nnets = 0;
   save();
+}
+
+int Settings::findNet(const String& s) const {
+  for (int i = 0; i < nnets; i++) if (nets[i].ssid == s) return i;
+  return -1;
+}
+
+void Settings::addNet(const String& s, const String& p) {
+  int at = findNet(s);
+  if (at < 0) at = nnets < MAX_NETS ? nnets++ : MAX_NETS - 1;   // full: the oldest goes
+  for (int i = at; i > 0; i--) nets[i] = nets[i - 1];
+  nets[0].ssid = s;
+  nets[0].pass = p;
+  ssid = s;
+  pass = p;
+}
+
+void Settings::forgetNet(int i) {
+  if (i < 0 || i >= nnets) return;
+  for (; i + 1 < nnets; i++) nets[i] = nets[i + 1];
+  nnets--;
+  ssid = nnets ? nets[0].ssid : String();
+  pass = nnets ? nets[0].pass : String();
 }

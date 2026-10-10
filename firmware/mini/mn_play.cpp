@@ -233,6 +233,8 @@ static void teamColours(const Game& g, uint16_t& away, uint16_t& home) {
   if (g.away.color && g.home.color && alike(g.away.color, g.home.color)) away = rgb(190, 196, 208);
 }
 
+void playTeamColours(const Game& g, uint16_t& away, uint16_t& home) { teamColours(g, away, home); }
+
 static void football(int cx, int cy, int w, int h) {
   lcd.fillEllipse(cx, cy, w / 2, h / 2, rgb(140, 80, 40));
   lcd.drawFastHLine(cx - w / 5, cy, w * 2 / 5, C_WHITE);
@@ -398,6 +400,23 @@ static void drawCard(const Game& g) {
   if (line[1].length()) text(F_M15, line[1], CX0 + 14, CY0 + 56, C_WHITE, rgb(34, 40, 54), middle_left);
 }
 
+void playCardHold(const Game& g, uint32_t ms) {
+  if (!g.fb.has || !g.fb.play[0]) return;
+  drawCard(g);
+  cardUntil = millis() + ms;
+}
+
+PlayHit playGameHit(int x, int y, const Game& g, bool known) {
+  if (!known || g.state == GS_NONE) return PH_NONE;
+  if (cardOn && x >= CX0 - 6 && x < CX1 + 6 && y >= CY0 - 6) return PH_CARD;
+  if (y < 40 || y >= 246) return PH_NONE;
+  if (g.state == GS_LIVE && g.fb.has) {
+    if (y >= 176) return PH_SIT;                       // the field and the win bar
+    if (y >= 110 && x >= 128 && x < 352) return PH_SIT;   // down and distance, timeouts
+  }
+  return PH_TEAMS;
+}
+
 void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
   uint32_t keepUntil = cardOn ? cardUntil : 0;   // a card that's showing keeps its time through a redraw
   if (mode != PG_DYN) {
@@ -408,6 +427,7 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     playAutoTag(autoSecs);
   }
   if (!known || g.state == GS_NONE) {
+    if (mode != PG_DYN) uiBattery(true);
     letters(TEAMS[team].abbr, 240, 100, F_B36, C_BG);
     text(F_B24, TEAMS[team].name, 240, 150, C_WHITE, C_BG, middle_center);
     text(F_M15, known ? "No game coming up" : "Getting the score...", 240, 190, C_GREY, C_BG, middle_center);
@@ -426,8 +446,9 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
       pw = pill(10, 8, dd <= 0 ? "TODAY" : dd == 1 ? "TOMORROW" : startDay(g), blue, C_WHITE);
     }
     text(F_S13, LEAGUE_NAMES[g.league], 10 + pw + 10, 18, C_GREY, C_BG, middle_left);
-    if (fb && g.fb.redzone) pill(470 - 84, 8, "RED ZONE", C_RED, C_WHITE);
-    else if (g.net[0]) text(F_S13, g.net, 470, 18, C_GREY, C_BG, middle_right);
+    if (fb && g.fb.redzone) pill(296, 8, "RED ZONE", C_RED, C_WHITE);
+    else if (g.net[0]) text(F_S13, g.net, 388, 18, C_GREY, C_BG, middle_right);
+    uiBattery(true);
     // the two teams
     if (!logoDraw(g.away, 70, 98, 112, C_BG)) letters(g.away.abbr, 70, 98, F_B36, C_BG);
     if (!logoDraw(g.home, 410, 98, 112, C_BG)) letters(g.home.abbr, 410, 98, F_B36, C_BG);

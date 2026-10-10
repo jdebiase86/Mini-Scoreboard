@@ -25,3 +25,11 @@ uint32_t playGameShape(const Game& g, bool known); // what only changes when the
 
 // "Q3 4:12", "2nd 8:31", "Top 5th": one line for a live game
 String playStatus(const Game& g);
+// The two teams' colours as the game screen uses them
+void playTeamColours(const Game& g, uint16_t& away, uint16_t& home);
+
+// What a tap on the game screen is on (when the game's details can be shown)
+enum PlayHit { PH_NONE = 0, PH_CARD, PH_TEAMS, PH_SIT };
+PlayHit playGameHit(int x, int y, const Game& g, bool known);
+// Brings the last-play card back for `ms` (after its details were looked at)
+void playCardHold(const Game& g, uint32_t ms);
