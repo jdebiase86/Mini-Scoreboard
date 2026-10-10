@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 BASE, LID, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
 H = 10.0                       # extra depth (battery thickness)
-BX = 71.5                      # battery centre along the case
+BX = 78.0                      # battery centre along the case (the speaker is 29.5, clear of the RESET and BOOT fingers)
 HERE = os.path.dirname(os.path.abspath(__file__))
 tmp = os.path.join(OUT, "deep.stl")
 subprocess.run([sys.executable, os.path.join(HERE, "deepen.py"), BASE, tmp, str(H), "67", "36", str(BX), "speaker"], check=True)
@@ -61,7 +61,7 @@ WHITE = (0.95, 0.95, 0.96); BLUE = (0.3, 0.5, 0.95); GREEN = (0.25, 0.6, 0.3); D
 GOLD = (0.9, 0.7, 0.2); RED = (0.9, 0.25, 0.25); GREY = (0.45, 0.47, 0.5)
 fz = -6.7 - H
 bat = trimesh.creation.box(extents=[67, 36, 10]); bat.apply_translation([BX, 30.575, fz + 5.5])
-spk = trimesh.creation.box(extents=[25, 35, 6.8]); spk.apply_translation([20.5, 30.575, fz + 0.4 + 3.4])
+spk = trimesh.creation.box(extents=[25, 35, 6.8]); spk.apply_translation([29.5, 30.575, fz + 0.4 + 3.4])
 ins = []
 for hx, hy in ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6)):
     c = trimesh.creation.cylinder(radius=2.3, height=4.5, sections=24); c.apply_translation([hx, hy, -2.6 - 2.25 + 0.2]); ins.append((c, GOLD))

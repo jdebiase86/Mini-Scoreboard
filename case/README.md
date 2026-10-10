@@ -58,3 +58,8 @@ shows at both ends. build_case.py writes base_plain.stl and base_final.stl (with
 (4.2 mm); none of its shape is used. Closed case about 24 mm thick, 75.3 mm wide
 with the loops. Print: base floor-down, lid face-down (flipped), PLA.
     python3 build_case.py <buttons base.stl> <lid.stl> <out folder>
+
+Draft 5 (Oct 10, after the first print): the speaker pocket's corner ribs sat on top of the RESET / BOOT
+fingers (the ribs started at x = 5.4 and the fingers' slits run to x = 12.5), so the buttons couldn't
+move. The speaker pocket now starts at x = 14.4 (speaker centre 29.5) and the battery moved to x = 78
+(it just fits between the speaker and the right wall: 67.6 mm for a 65 to 67 mm battery).
