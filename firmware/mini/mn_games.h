@@ -19,7 +19,7 @@ struct Minigame {
 
 // the games (each in its own file)
 extern const Minigame GAME_KICK, GAME_FREETHROW, GAME_MEMORY, GAME_SUDOKU, GAME_SNAKE, GAME_2048, GAME_SIMON, GAME_CONNECT4,
-    GAME_TRIVIA, GAME_REACTION, GAME_TOSS;
+    GAME_TRIVIA, GAME_REACTION, GAME_TOSS, GAME_BASKET;
 
 // the menu: games on pages of six
 void gamesMenu();                        // draws it

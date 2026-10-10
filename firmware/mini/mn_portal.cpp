@@ -3,6 +3,7 @@
 #include "mn_ota.h"
 #include "mn_lcd.h"
 #include "mn_log.h"
+#include "mn_diag.h"
 #include "mn_version.h"
 #include "mn_dns.h"
 #include <WiFi.h>
@@ -156,6 +157,10 @@ static void handleRoot() {
   h += "<details><summary>Colour mode</summary><p class=hint>Only change this if the colours look wrong "
        "(red looks blue, or everything looks like a photo negative). The mini restarts to apply it.</p>" +
        sel("colour", settings.colour, COL, 4) + "</details>";
+  static const char* const SAVERS[] = {"Automatic: save data on a phone hotspot", "Always save data", "Never (check as often as possible)"};
+  h += "<label class=f>Data use</label>" + sel("saver", settings.saver, SAVERS, 3) +
+       "<p class=hint>Saving data checks scores a little less often (live games every 8 seconds instead of 5) and "
+       "never downloads the same logo over and over. Good on a phone hotspot.</p>";
   h += "</section><button type=submit>Save</button></form>";
 
   if (home) {
@@ -195,6 +200,7 @@ static void handleSave() {
   settings.tz = constrain(server.arg("tz").toInt(), 0, NTZ - 1);
   settings.bright = constrain(server.arg("bright").toInt(), 0, NBRIGHT - 1);
   settings.dimMode = constrain(server.arg("dim").toInt(), 0, 2);
+  settings.saver = constrain(server.arg("saver").toInt(), 0, 2);
   bool flip = server.arg("flip") == "1";
   int colour = server.hasArg("colour") ? constrain(server.arg("colour").toInt(), 0, 3) : settings.colour;
   bool screenChanged = flip != settings.flip || colour != settings.colour;
@@ -300,6 +306,7 @@ static void routes() {
     portalSavedAt = millis();
   });
   server.on("/screen", HTTP_GET, handleScreen);
+  server.on("/battery", HTTP_GET, [] { server.send(200, "text/plain; charset=utf-8", diagBatCsv()); });
   server.on("/log", HTTP_GET, [] { server.send(200, "text/plain; charset=utf-8", mnLogText()); });
   server.on("/favicon.ico", HTTP_GET, [] { server.send(404, "text/plain", ""); });
   server.onNotFound([] {

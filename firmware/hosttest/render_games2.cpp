@@ -23,6 +23,9 @@ Settings settings;
 time_t mnNow;
 static uint32_t fakeMs = 1000;
 uint32_t millis() { return fakeMs; }
+static int heldX = -1;
+bool touchHeldAt(int& x, int& y) { if (heldX < 0) return false; x = heldX; y = 200; return true; }
+float basketLanding();
 static void adv(uint32_t ms) { fakeMs += ms; }
 void delay(uint32_t) {}
 void mnLog(const char*, ...) {}
@@ -150,5 +153,22 @@ int main() {
   openGame(4);   // Coin and dice
   gamesTap(340, 285); frames(20, 80); save("g23_die");
   gamesTap(120, 285); frames(30, 60); save("g24_coin");
+  // basket toss (page 2, slot 5)
+  gamesTap(10, 10);
+  openGame(5); save("g25_basket_start");
+  gamesTap(240, 190); frames(29, 25);                 // ready, then the toss begins
+  frames(20, 25); save("g26_basket_rising");
+  frames(19, 25); save("g27_basket_apex");
+  for (int i = 0; i < 20; i++) { heldX = (int)basketLanding(); frames(1, 25); }
+  save("g28_basket_coming_down");
+  for (int i = 0; i < 24; i++) { heldX = (int)basketLanding(); frames(1, 25); }
+  save("g29_basket_caught");
+  // later levels: a bot catches until it is well along, then pictures of tosses
+  for (int i = 0; i < 1500; i++) { heldX = (int)basketLanding(); frames(1, 25); }
+  for (int i = 0; i < 160; i++) { heldX = (int)basketLanding(); frames(1, 25); if (i == 30) save("g30_basket_later"); if (i == 55) save("g30b_basket_later_b"); if (i == 100) save("g30c_basket_later_c"); }
+  heldX = -1;
+  // no thumb: three misses
+  for (int i = 0; i < 700; i++) frames(1, 25);
+  save("g31_basket_over");
   return 0;
 }

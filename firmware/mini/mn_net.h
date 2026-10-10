@@ -22,5 +22,6 @@ bool mnWifiUp();                        // joined to a network right now
 // arrived (false = nothing yet).
 void netWantLive(int pick);
 bool netLive(int pick, LiveInfo& out);
+bool netSaverOn();                    // the data saver is on (a phone hotspot, or switched on)
 uint32_t netAgeSecs(int pick);        // seconds since favourite `pick` last got a good answer (65535 = never)
 uint32_t netMemWaitSecs();           // how long the downloads have been waiting for memory (0 = not)

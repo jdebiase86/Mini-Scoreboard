@@ -162,6 +162,18 @@ static void tileRect(int i, int& x0, int& y0, int& x1, int& y1) {
 static int lastMinute = -1;
 
 void uiHomeClock(bool force) {
+  // no Wi-Fi: say so in plain words where the time is (the scores below are the last ones heard)
+  static bool offShown = false;
+  if (!mnWifiUp()) {
+    if (!offShown || force) {
+      lcd.fillRect(104, 4, 92, 26, C_BG);
+      text(F_M12, "Waiting for", 150, 11, rgb(255, 176, 32), C_BG, middle_center);
+      text(F_M12, "Wi-Fi...", 150, 24, rgb(255, 176, 32), C_BG, middle_center);
+    }
+    offShown = true;
+    return;
+  }
+  if (offShown) { offShown = false; force = true; }
   time_t now = mnTime();
   if (now < 1700000000) return;
   struct tm lt;
@@ -174,8 +186,8 @@ void uiHomeClock(bool force) {
   char s[24];
   int h = lt.tm_hour % 12;
   snprintf(s, sizeof(s), "%s %d:%02d %s", DAYS[lt.tm_wday % 7], h ? h : 12, lt.tm_min, lt.tm_hour < 12 ? "AM" : "PM");
-  lcd.fillRect(96, 4, 100, 26, C_BG);
-  text(F_S13, s, 146, 16, C_GREY, C_BG, middle_center);
+  lcd.fillRect(104, 4, 92, 26, C_BG);   // clear of the MY TEAMS button on the second page
+  text(F_S13, s, 150, 16, C_GREY, C_BG, middle_center);
 }
 
 // What sits in each of a page's six slots: an index into settings.picks,
@@ -220,7 +232,7 @@ static void arrowIcon(int cx, int cy, uint16_t col) {   // a fat right arrow
 }
 
 // back button where "My Teams" sits on the first page
-static const int BK_X0 = 6, BK_Y0 = 3, BK_X1 = 112, BK_Y1 = 29;
+static const int BK_X0 = 6, BK_Y0 = 3, BK_X1 = 100, BK_Y1 = 29;
 // EDIT (the team picker) and Wi-Fi in the first page's top bar, left of the battery
 static const int ED_X0 = 198, ED_Y0 = 3, ED_X1 = 254, ED_Y1 = 29;
 static const int GM_X0 = 258, GM_Y0 = 3, GM_X1 = 340, GM_Y1 = 29;
@@ -273,7 +285,7 @@ void uiHome(int page) {
   } else {
     tile(BK_X0, BK_Y0, BK_X1, BK_Y1, C_TILE, C_EDGE, 13);
     lcd.fillTriangle(BK_X0 + 12, 16, BK_X0 + 20, 9, BK_X0 + 20, 23, C_WHITE);
-    text(F_B12, "MY TEAMS", BK_X0 + 64, 16, C_WHITE, C_TILE, middle_center);
+    text(F_B12, "MY TEAMS", BK_X0 + 58, 16, C_WHITE, C_TILE, middle_center);
     text(F_S13, "More teams", 384, 16, C_GREY, C_BG, middle_right);
   }
   if (!settings.npicks) {

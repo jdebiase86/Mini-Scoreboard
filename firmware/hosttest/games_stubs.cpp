@@ -24,3 +24,5 @@ uint32_t playTileSig(int, const Game&, bool) { return 0; }
 bool logoDraw(const TeamSide&, int, int, int, uint16_t) { return false; }
 uint32_t logoVersion() { return 0; }
 const char* const DUMMY = "stubs";
+
+bool touchHeldAt(int& x, int& y) { return false; }

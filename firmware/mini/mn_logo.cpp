@@ -43,6 +43,7 @@ static void want(const char*, const TeamSide&, int) {}
 #include <HTTPClient.h>
 #include "mn_tls.h"
 #include "mn_log.h"
+#include "mn_net.h"
 
 struct Want { char key[40]; char path[64]; uint8_t size; };
 static const int NWANT = 8;
@@ -169,6 +170,13 @@ bool logoFetchOne() {
   char fn[48];
   snprintf(fn, sizeof(fn), "/%s.png", w.key);
   if (LittleFS.exists(fn)) return false;
+  if (netSaverOn()) {   // saving data: at most eight logos in ten minutes, whatever the screens ask for
+    static uint32_t winAt = 0;
+    static int fetched = 0;
+    if (!winAt || millis() - winAt > 600000UL) { winAt = millis() | 1; fetched = 0; }
+    if (fetched >= 8) { pushWant(w); return false; }
+    fetched++;
+  }
   if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < 60000) { pushWant(w); delay(500); return true; }   // short of memory: later
   uint8_t* buf = (uint8_t*)heap_caps_malloc(MAX_PNG, MALLOC_CAP_8BIT);
   if (!buf) return true;

@@ -4,6 +4,7 @@
 #include "mn_ui.h"
 #include "mn_lcd.h"
 #include "mn_log.h"
+#include "mn_diag.h"
 #include <WiFi.h>
 
 struct Ap { String ssid; int rssi; bool open; };
@@ -256,6 +257,9 @@ WifiResult wifiLoop() {
       mnLog("wifi: joined %s", selSsid.c_str());
       uiMessage("Joined", selSsid.substring(0, 28).c_str(), "Restarting...", C_GREEN);
       delay(1500);
+#ifndef MN_HOST
+      diagNote("joined a new Wi-Fi network");
+#endif
       ESP.restart();
     } else if (t > 25000 || (t > 7000 && (st == WL_CONNECT_FAILED || st == WL_NO_SSID_AVAIL))) {
       mnLog("wifi: couldn't join %s (%d)", selSsid.c_str(), (int)st);

@@ -12,7 +12,8 @@
 
 #ifndef MN_GAMES_HELPERS_ONLY
 static const Minigame* const GAMES[] = {&GAME_KICK,  &GAME_FREETHROW, &GAME_MEMORY,   &GAME_SUDOKU,   &GAME_SNAKE,    &GAME_2048,
-                                        &GAME_SIMON, &GAME_CONNECT4,  &GAME_TRIVIA,   &GAME_REACTION, &GAME_TOSS};
+                                        &GAME_SIMON, &GAME_CONNECT4,  &GAME_TRIVIA,   &GAME_REACTION, &GAME_TOSS,
+                                        &GAME_BASKET};
 static const int NGAMES = sizeof(GAMES) / sizeof(GAMES[0]);
 
 #endif

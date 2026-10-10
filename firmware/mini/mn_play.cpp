@@ -166,6 +166,15 @@ static bool sideOf(int team, TeamSide& s) {
   return false;
 }
 static bool footballTeam(int team) { return leagueSport(TEAMS[team].league) == FOOTBALL; }
+// a football team with no game: a bye week while the season is on (September to January), else the off season
+static bool byeWeek(int team) {
+  if (!footballTeam(team)) return false;
+  time_t now = mnTime();
+  struct tm lt;
+  localtime_r(&now, &lt);
+  int m = lt.tm_mon + 1;
+  return m >= 9 || m <= 1;
+}
 
 void playTile(int x0, int y0, int x1, int y1, int team, const Game& g, bool known) {
   int cx = (x0 + x1) / 2;
@@ -186,10 +195,10 @@ void playTile(int x0, int y0, int x1, int y1, int team, const Game& g, bool know
     bigFont = F_B16;
     smallCol = C_DIM;
   } else if (g.state == GS_NONE) {
-    bool bye = footballTeam(team);
-    big = bye ? "BYE WEEK" : "NO GAME";
-    small = bye ? "no game this week" : "none scheduled";
-    bigFont = F_B18;
+    bool bye = byeWeek(team);
+    big = bye ? "BYE WEEK" : "Off season";
+    small = bye ? "no game this week" : "";
+    bigFont = bye ? F_B18 : F_B16;
     smallCol = C_DIM;
   } else if (g.state == GS_LIVE) {
     big = String((int)g.mine().score) + " - " + String((int)g.them().score);
@@ -524,7 +533,7 @@ PlayHit playGameHit(int x, int y, const Game& g, bool known) {
   if (cardOn && x >= CX0 - 6 && x < CX1 + 6 && y >= CY0 - 6) return PH_CARD;
   if (!cardOn && g.state == GS_LIVE && x < 134 && y >= 266) return PH_LASTPLAY;
   if (!cardOn && autoTagOn && x >= 240 && y >= 270) return PH_AUTOTAG;
-  if (y < 40 || y >= 246) return PH_NONE;
+  if (y < 40 || (y >= 246 && g.state != GS_PRE)) return PH_NONE;   // (an upcoming game: the GAME DETAILS button is down there too)
   if (g.state == GS_LIVE && g.fb.has) {
     if (y >= 176) return PH_SIT;                       // the field and the win bar
     if (y >= 110 && x >= 128 && x < 352) return PH_SIT;   // down and distance, timeouts
@@ -552,12 +561,11 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     if (!own || !logoDraw(s, 240, 98, 112, C_BG)) letters(TEAMS[team].abbr, 240, 98, F_B36, C_BG);
     text(F_B24, TEAMS[team].name, 240, 170, C_WHITE, C_BG, middle_center);
     if (!known) text(F_M15, "Getting the score...", 240, 206, C_GREY, C_BG, middle_center);
-    else if (footballTeam(team)) {
+    else if (byeWeek(team)) {
       text(F_B36, "BYE WEEK", 240, 218, C_YELLOW, C_BG, middle_center);
       text(F_S13, "no game this week", 240, 252, C_GREY, C_BG, middle_center);
     } else {
-      text(F_B24, "NO GAME", 240, 218, C_YELLOW, C_BG, middle_center);
-      text(F_S13, "none scheduled in the next week", 240, 248, C_GREY, C_BG, middle_center);
+      text(F_B24, "Off season", 240, 222, C_GREY, C_BG, middle_center);
     }
     return;
   }
