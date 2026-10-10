@@ -543,6 +543,8 @@ so shooting down the middle nearly always scores. Fix: when the keeper has not "
 central), scale the guess chance up with level, and make the keeper reach wider. (3) Rename "Cheer Simon" to "Simon" (title bar,
 game list, GAME_SIMON name). (4) Basket Toss icon: the flyer pokes out above the tile; lower or shrink it.
 
+(5) Heads and tails: make the coin look like a real quarter (silver rim with reeding, an eagle-style head side and a tails side, shine, spinning edge-on as it flips); picture first.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
