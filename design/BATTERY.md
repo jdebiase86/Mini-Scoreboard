@@ -35,3 +35,7 @@ fit, but confirm with a ruler photo.
 - Still to do before the first plug-in: one photo of the battery plug held
   right at the socket (lined up, not pushed in) with the "+" mark visible,
   to check the red wire lands on "+" and the plug is the same size as the socket.
+
+## Oct 9: hardware test passed
+- Screen test (firmware/mini_hw_test) looked right on the first board: colours, touch, LED and Wi-Fi.
+- v0.1 flashed, joined home Wi-Fi on the second try and shows the home screen.
