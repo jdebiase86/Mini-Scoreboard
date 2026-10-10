@@ -218,7 +218,7 @@ bool logoFetchOne() {
 #endif
 
 // ------------------------------------------------------------- drawing
-struct Ctx { PNG* png; int x0, y0, size; uint8_t br, bg, bb; lgfx::rgb565_t line[128]; };
+struct Ctx { PNG* png; int x0, y0, size; uint8_t br, bg, bb; bool keyed; bool clr[128]; lgfx::rgb565_t line[128]; };
 
 static inline uint8_t mix(uint8_t f, uint8_t b, uint8_t a) { return (f * a + b * (255 - a) + 127) / 255; }
 
@@ -237,26 +237,41 @@ static int drawLine(PNGDRAW* d) {
   }
   for (int x = 0; x < w; x++) {
     uint8_t r = c->br, g = c->bg, b = c->bb;
+    bool clear = false;
     if (d->iPixelType == PNG_PIXEL_TRUECOLOR_ALPHA && d->iBpp == 8) {
       uint8_t a = p[x * 4 + 3];
+      clear = a < 6;
       r = mix(p[x * 4], r, a); g = mix(p[x * 4 + 1], g, a); b = mix(p[x * 4 + 2], b, a);
     } else if (d->iPixelType == PNG_PIXEL_TRUECOLOR && d->iBpp == 8) {
       r = p[x * 3]; g = p[x * 3 + 1]; b = p[x * 3 + 2];
     } else if (d->iPixelType == PNG_PIXEL_INDEXED && d->iBpp == 8) {
       uint8_t i = p[x];
       uint8_t a = d->iHasAlpha ? d->pPalette[768 + i] : 255;
+      clear = a < 6;
       r = mix(d->pPalette[i * 3], r, a); g = mix(d->pPalette[i * 3 + 1], g, a); b = mix(d->pPalette[i * 3 + 2], b, a);
     } else if (d->iPixelType == PNG_PIXEL_GRAY_ALPHA && d->iBpp == 8) {
       uint8_t a = p[x * 2 + 1];
+      clear = a < 6;
       r = mix(p[x * 2], r, a); g = mix(p[x * 2], g, a); b = mix(p[x * 2], b, a);
     }
     c->line[x] = lgfx::rgb565_t(r, g, b);
+    c->clr[x] = clear;
+  }
+  if (c->keyed) {   // over a picture: only the parts of the row that are not clear
+    int x = 0;
+    while (x < w) {
+      while (x < w && c->clr[x]) x++;
+      int st = x;
+      while (x < w && !c->clr[x]) x++;
+      if (x > st) lcd.pushImage(c->x0 + st, c->y0 + d->y, x - st, 1, c->line + st);
+    }
+    return 1;
   }
   lcd.pushImage(c->x0, c->y0 + d->y, w, 1, c->line);
   return 1;
 }
 
-bool logoDraw(const TeamSide& t, int cx, int cy, int size, uint16_t bg) {
+static bool logoDrawImpl(const TeamSide& t, int cx, int cy, int size, uint16_t bg, bool keyed) {
   char key[40];
   if (!keyOf(t, size, key)) return false;
   size_t n = 0;
@@ -270,6 +285,7 @@ bool logoDraw(const TeamSide& t, int cx, int cy, int size, uint16_t bg) {
   if (c && png->openRAM(buf, n, drawLine) == PNG_SUCCESS && png->getWidth() <= 128) {
     c->png = png;
     c->size = size;
+    c->keyed = keyed;
     c->x0 = cx - png->getWidth() / 2;
     c->y0 = cy - png->getHeight() / 2;
     // the tile colour as 8-bit red, green, blue
@@ -283,3 +299,7 @@ bool logoDraw(const TeamSide& t, int cx, int cy, int size, uint16_t bg) {
   free(buf);
   return ok;
 }
+
+bool logoDraw(const TeamSide& t, int cx, int cy, int size, uint16_t bg) { return logoDrawImpl(t, cx, cy, size, bg, false); }
+// over a picture: the logo's clear parts leave what is already on the screen alone (no square round it); its soft edges blend with bg
+bool logoDrawOver(const TeamSide& t, int cx, int cy, int size, uint16_t bg) { return logoDrawImpl(t, cx, cy, size, bg, true); }

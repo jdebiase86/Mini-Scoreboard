@@ -108,7 +108,7 @@ static void badge(const TeamSide& s, int cx, int cy, int size, bool bigDisc = tr
     lcd.fillCircle(cx, cy, r + 4, C_WHITE);
     lcd.fillCircle(cx, cy, r, rgb(12, 14, 22));
   }
-  if (!logoDraw(s, cx, cy, size > 90 ? 112 : 76, rgb(12, 14, 22))) {
+  if (!logoDrawOver(s, cx, cy, size > 90 ? 112 : 76, rgb(12, 14, 22))) {
     uiText(F_B36, s.abbr, cx, cy, C_WHITE, rgb(12, 14, 22), middle_center);
   }
 }
@@ -250,14 +250,14 @@ static void scene(int phase, uint32_t t) {
     case FX_SACK: {
       rays(mineCol(), mineDark(), 120, rot);
       starburst(CX, 120, C_YELLOW);
-      logoDraw(spec.mine, CX, 120, 76, C_YELLOW);
+      logoDrawOver(spec.mine, CX, 120, 76, C_YELLOW);
       break;
     }
     case FX_STOPPED: {
       lcd.fillScreen(mineDark());
       octagon(CX, 118, 112, C_WHITE); octagon(CX, 118, 102, rgb(200, 30, 36));
       uiText(F_B36, "STOP", CX, 118, C_WHITE, rgb(200, 30, 36), middle_center);
-      logoDraw(spec.mine, 66, 250, 76, mineDark());
+      logoDrawOver(spec.mine, 66, 250, 76, mineDark());
       break;
     }
     case FX_STONEWALL: bricks(shade(spec.mine.color, rgb(20, 40, 110), 55), mineDark()); badge(spec.mine, CX, 112, 112); break;
@@ -307,7 +307,7 @@ static void captions(uint32_t t) {
   switch (spec.kind) {
     case FX_THEIRSCORE: case FX_TURNOVER: case FX_NOGOOD: {
       uiText(F_B36, spec.word, 340, 142, amber(), rgb(16, 16, 18), middle_center);
-      if (!logoDraw(spec.them, 168, 160, 76, rgb(16, 16, 18))) uiText(F_B24, spec.them.abbr, 168, 160, C_WHITE, rgb(16, 16, 18), middle_center);
+      if (!logoDrawOver(spec.them, 168, 160, 76, rgb(16, 16, 18))) uiText(F_B24, spec.them.abbr, 168, 160, C_WHITE, rgb(16, 16, 18), middle_center);
       uiText(F_B16, spec.sub, 340, 189, C_WHITE, rgb(16, 16, 18), middle_center);
       return;
     }
