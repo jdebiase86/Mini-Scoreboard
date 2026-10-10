@@ -121,8 +121,14 @@ static void handleRoot() {
          "<div class=row><input type=checkbox id=show onclick=\"pw.type=this.checked?'text':'password'\">"
          "<label for=show>Show password</label></div></section>";
   } else {
-    h += "<section><h2>Wi-Fi</h2><p class=hint>On <b>" + esc(settings.ssid) + "</b>.</p>"
-         "<details><summary>Change Wi-Fi network</summary>"
+    h += "<section><h2>Wi-Fi</h2><p class=hint>On <b>" + esc(settings.ssid) + "</b>.";
+    if (settings.nnets > 1) {
+      h += " Also remembered: ";
+      for (int i = 1; i < settings.nnets; i++) h += String(i > 1 ? ", " : "") + esc(settings.nets[i].ssid);
+      h += ".";
+    }
+    h += " The mini joins whichever one it can find. On the go, tap the Wi-Fi button on its screen.</p>"
+         "<details><summary>Add or change a Wi-Fi network</summary>"
          "<label class=f>Network name</label><input type=text name=ssid autocomplete=off autocapitalize=none autocorrect=off spellcheck=false>"
          "<label class=f>Password</label><input type=password name=pass autocomplete=off>"
          "<p class=hint>Leave blank to stay on the current network.</p></details></section>";
@@ -198,8 +204,7 @@ static void handleSave() {
     String pass = server.arg("pass");
     if (!apOn && ssid == settings.ssid && !pass.length()) pass = settings.pass;   // left blank: keep it
     wifiChanged = ssid != settings.ssid || pass != settings.pass;
-    settings.ssid = ssid;
-    settings.pass = pass;
+    settings.addNet(ssid, pass);
   }
   settings.save();
   setenv("TZ", TZS[settings.tz].posix, 1);

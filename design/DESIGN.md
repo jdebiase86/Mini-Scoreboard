@@ -151,7 +151,29 @@ built in the stages below.
    win chance bar and last-play card: v0.4 (stage 3, football first). Pictures drawn from real
    ESPN feeds: design/mini_stage2.png.
 3. Game screens: football field strip with the drive, win chance bar, last
-   play pop-up; then the other sports.
+   play pop-up (v0.4); then the other sports.
+   v0.5 (Oct 10, not yet tried on the board), decided with Joe:
+   - Checking: live game every 5 s; last 10 min before a start every 30 s;
+     a game that just ended every 10 min for 5 h; otherwise hourly (early
+     enough to be watching 10 min before a start). ESPN is asked for gzip
+     (about 12x smaller; its data is cached 5 s anyway), so a 5 s poll is
+     about 20 KB for a big football feed.
+   - Wi-Fi button on the home screen: list of networks in range, tap to
+     join, on-screen keyboard for the password (the iPhone can't run a
+     hotspot and join another Wi-Fi at once, so the phone page can't do
+     it), up to 5 remembered networks (the strongest in range is joined at
+     start and when carried somewhere else), "Other network..." for a hidden
+     one. Open networks with a sign-in page can't work (no browser).
+   - Battery meter: icon and percent top right, bolt when charging (a guess
+     from the voltage rising; the board has no charge wire), amber at 20%,
+     red at 10%. No battery connected: nothing shown. Saver mode and the
+     battery page are later.
+   - Taps on the game screen: the last-play card (full play, holds the card
+     8 s more when you go back), the teams (records, score by period,
+     leaders or starters, stadium, TV), the field / down and distance / win
+     bar (situation). The extras are only read from ESPN while a details
+     card is open (they cost memory). No betting lines. ESPN sends leaders
+     for NFL only before a game.
 4. Red zone and play animations (touchdown, field goal, goal, home run and
    win first), then the rest.
 5. Sound.

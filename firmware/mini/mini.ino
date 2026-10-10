@@ -21,10 +21,13 @@
 #include "mn_picker.h"
 #include "mn_net.h"
 #include "mn_play.h"
+#include "mn_wifi.h"
+#include "mn_detail.h"
+#include "mn_battery.h"
 #include "mn_log.h"
 #include "mn_version.h"
 
-enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK };
+enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL };
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
@@ -34,6 +37,10 @@ static uint32_t autoAt = 0;  // when AUTO moves on
 static uint32_t seenVer = 0, shownSig = 0, shownShape = 0;
 static const uint32_t AUTO_MS = 20000;
 static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
+static Mode wifiFrom = M_HOME;       // M_WIFI: where BACK goes
+static DetailKind detKind = DK_TEAMS; // M_DETAIL: which card
+static uint32_t detSig = 0;
+static bool holdCardAfter = false;   // back from the last-play details: show that card again for a few seconds
 static String apName;
 static bool dimmed = false;
 static const uint32_t DIM_AFTER_MS = 60000;
@@ -47,7 +54,10 @@ static void startStation() {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
   WiFi.setHostname("mini-scoreboard");
-  WiFi.begin(settings.ssid.c_str(), settings.pass.c_str());
+  // several remembered networks: the strongest one that's in range
+  int at = settings.nnets > 1 ? wifiBestSaved() : -1;
+  if (at < 0) at = 0;
+  WiFi.begin(settings.nets[at].ssid.c_str(), settings.nets[at].pass.c_str());
   lastTry = millis();
   setMode(M_CONNECTING);
 }
@@ -126,6 +136,7 @@ void setup() {
   pinMode(PIN_AMP, OUTPUT);
   digitalWrite(PIN_AMP, HIGH);   // speaker amplifier off until sound arrives
   settings.load();
+  batBegin();
   setenv("TZ", TZS[settings.tz].posix, 1);
   tzset();
   lcdBegin(settings.colour, settings.flip);
@@ -151,6 +162,12 @@ void setup() {
   }
 }
 
+static void closeDetail() {
+  holdCardAfter = detKind == DK_PLAY;
+  autoAt = millis() + AUTO_MS;
+  setMode(M_TEAM);
+}
+
 static void handleTap(int x, int y) {
   switch (mode) {
     case M_HOME: {
@@ -160,6 +177,13 @@ static void handleTap(int x, int y) {
       if (hit == HIT_EDIT) {
         setMode(M_PICK);
         pickerStart();
+        dirty = false;
+        return;
+      }
+      if (hit == HIT_WIFI) {
+        wifiFrom = M_HOME;
+        setMode(M_WIFI);
+        wifiStart();
         dirty = false;
         return;
       }
@@ -174,8 +198,28 @@ static void handleTap(int x, int y) {
       setMode(M_TEAM);
       break;
     }
-    case M_TEAM:
-      if (uiHomeButtonHit(x, y)) { homePage = 0; setMode(M_HOME); }
+    case M_TEAM: {
+      if (uiHomeButtonHit(x, y)) { homePage = 0; setMode(M_HOME); break; }
+      Game g;
+      bool known = settings.npicks && netGame(shownPick, g);
+      PlayHit h = playGameHit(x, y, g, known);
+      if (h == PH_NONE) break;
+      detKind = h == PH_CARD ? DK_PLAY : h == PH_SIT ? DK_SIT : DK_TEAMS;
+      detailOpen(detKind);
+      if (detKind == DK_TEAMS) netWantDetails(shownPick);
+      setMode(M_DETAIL);
+      break;
+    }
+    case M_DETAIL:
+      detailTouched();
+      if (detailTap(x, y)) closeDetail();
+      break;
+    case M_WIFI:
+      if (wifiTap(x, y) == WR_BACK) setMode(wifiFrom);
+      break;
+    case M_SETUP:
+    case M_FALLBACK:
+      if (uiSetupWifiHit(x, y)) { wifiFrom = mode; setMode(M_WIFI); wifiStart(); dirty = false; }
       break;
     case M_CONNECTED:
       setMode(M_HOME);   // a tap skips the message
@@ -229,8 +273,30 @@ static void handleSwipe(TouchEvent ev, int sx, int sy) {
     case M_PICK:
       if (ev == T_SWIPE_UP || ev == T_SWIPE_DOWN) pickerSwipe(ev == T_SWIPE_UP);
       break;
+    case M_WIFI:
+      if (ev == T_SWIPE_UP || ev == T_SWIPE_DOWN) wifiSwipe(ev == T_SWIPE_UP);
+      break;
+    case M_DETAIL:
+      detailTouched();
+      if (ev == T_SWIPE_RIGHT) closeDetail();   // like a back gesture
+      break;
     default:
       break;
+  }
+}
+
+// Carried somewhere else: with several remembered networks, look for one that's here
+static void roam() {
+  static uint32_t offlineSince = 0, lastTry2 = 0;
+  if (settings.nnets < 2 || wifiBusy() || mode == M_SETUP || mode == M_CONNECTING || mode == M_FALLBACK || mode == M_WIFI) return;
+  if (WiFi.status() == WL_CONNECTED) { offlineSince = 0; return; }
+  if (!offlineSince) offlineSince = millis();
+  if (millis() - offlineSince < 40000 || millis() - lastTry2 < 90000) return;
+  lastTry2 = millis();
+  int at = wifiBestSaved();
+  if (at >= 0) {
+    mnLog("roaming to %s", settings.nets[at].ssid.c_str());
+    WiFi.begin(settings.nets[at].ssid.c_str(), settings.nets[at].pass.c_str());
   }
 }
 
@@ -271,7 +337,9 @@ void loop() {
   } else if (touchDown() && dimmed) {
     lcdBrightness(level());   // wake as soon as the finger lands; the tap itself is swallowed
   }
-  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK;
+  batPoll();
+  roam();
+  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || (mode == M_WIFI && !wifiBusy());
   if (idleScreen && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
     lcdBrightness(max(10, level() / 8));
     dimmed = true;
@@ -314,6 +382,8 @@ void loop() {
       if (dirty) { uiHome(homePage); dirty = false; seenVer = netVersion(); }
       else {
         uiHomeClock(false);
+        uiBattery(false);
+        if (homePage == 0) uiHomeWifiIcon(false);
         if (seenVer != netVersion()) { seenVer = netVersion(); uiHomeRefresh(homePage); }
       }
       break;
@@ -335,6 +405,7 @@ void loop() {
       if (dirty || shape != shownShape) {
         // opening the screen, or the game itself changed: everything again
         if (settings.npicks) playGame(settings.picks[shownPick], g, known, left, dirty ? PG_OPEN : PG_FULL);
+        if (holdCardAfter) { playCardHold(g, 8000); holdCardAfter = false; }
         shownSig = sig;
         shownShape = shape;
         dirty = false;
@@ -347,8 +418,26 @@ void loop() {
         if (left != lastLeft) { playAutoTag(left); lastLeft = left; }
       }
       playCardTick();
+      uiBattery(false);
       break;
     }
+
+    case M_DETAIL: {
+      if (shownPick >= settings.npicks) shownPick = 0;
+      Game g;
+      bool known = settings.npicks && netGame(shownPick, g);
+      uint32_t sig = detailSig(g, known);
+      static uint32_t wantAt = 0;
+      if (dirty) { dirty = false; detSig = ~sig; wantAt = millis(); }
+      if (detKind == DK_TEAMS && millis() - wantAt > 30000) { netWantDetails(shownPick); wantAt = millis(); }
+      if (sig != detSig) { detailDraw(detKind, settings.picks[shownPick], g, known); detSig = sig; }
+      if (detailExpired()) closeDetail();
+      break;
+    }
+
+    case M_WIFI:
+      wifiLoop();
+      break;
 
     case M_PICK:
       if (dirty) { pickerDraw(); dirty = false; }

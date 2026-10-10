@@ -19,7 +19,8 @@ bool Game::same(const Game& o) const {
          !strcmp(away.abbr, o.away.abbr) && !strcmp(home.abbr, o.home.abbr) && away.score == o.away.score &&
          home.score == o.home.score && away.hasScore == o.away.hasScore && !strcmp(away.rec, o.away.rec) &&
          !strcmp(home.rec, o.home.rec) && !strcmp(away.logo, o.away.logo) && !strcmp(home.logo, o.home.logo) &&
-         away.color == o.away.color && home.color == o.home.color && fb.same(o.fb);
+         away.color == o.away.color && home.color == o.home.color && fb.same(o.fb) && det.has == o.det.has &&
+         det.sig == o.det.sig;
 }
 
 template <size_t N> static void scopy(char (&dst)[N], const char* src) {
@@ -27,7 +28,7 @@ template <size_t N> static void scopy(char (&dst)[N], const char* src) {
   dst[N - 1] = 0;
 }
 
-bool espnLoad(ByteSource& src, JsonDocument& doc) {
+bool espnLoad(ByteSource& src, JsonDocument& doc, bool rich) {
   // (written out in full: ArduinoJson only builds a filter's nested parts when
   // they're assigned through the document itself)
   JsonDocument filter;
@@ -57,8 +58,18 @@ bool espnLoad(ByteSource& src, JsonDocument& doc) {
   sit["lastPlay"]["text"] = true;
   sit["lastPlay"]["probability"]["homeWinPercentage"] = true;
   sit["lastPlay"]["drive"]["start"]["text"] = true;
+  if (rich) {
+    ev["competitions"][0]["venue"]["fullName"] = true;
+    ev["competitions"][0]["competitors"][0]["records"][0]["name"] = true;
+    ev["competitions"][0]["competitors"][0]["linescores"][0]["value"] = true;
+    ev["competitions"][0]["competitors"][0]["leaders"][0]["name"] = true;
+    ev["competitions"][0]["competitors"][0]["leaders"][0]["leaders"][0]["displayValue"] = true;
+    ev["competitions"][0]["competitors"][0]["leaders"][0]["leaders"][0]["athlete"]["shortName"] = true;
+    ev["competitions"][0]["competitors"][0]["probables"][0]["athlete"]["shortName"] = true;
+  }
   DeserializationError e = deserializeJson(doc, src, DeserializationOption::Filter(filter),
                                            DeserializationOption::NestingLimit(20));
+  if (!e) doc["rich"] = rich;
   return !e;
 }
 
@@ -134,6 +145,60 @@ static void fillFootball(Game& g, JsonObjectConst s) {
   scopy(f.play, t);
 }
 
+// the short word shown for each of ESPN's leader categories (0 = leave it out)
+static const char* leaderWord(const char* name) {
+  static const struct { const char* k; const char* w; } M[] = {
+      {"passingLeader", "PASS"}, {"rushingLeader", "RUSH"}, {"receivingLeader", "REC"}, {"points", "PTS"},
+      {"rebounds", "REB"}, {"assists", "AST"}, {"goals", "G"}, {"avg", "AVG"}, {"homeRuns", "HR"}, {"RBIs", "RBI"}};
+  for (auto& m : M) if (!strcmp(name, m.k)) return m.w;
+  return nullptr;
+}
+
+static uint32_t hashStr(uint32_t h, const char* s) {
+  for (; *s; s++) { h ^= (uint8_t)*s; h *= 16777619u; }
+  return (h ^ 0xff) * 16777619u;
+}
+
+static void fillSideDetail(SideDetail& d, JsonObjectConst c, uint32_t& sig) {
+  for (JsonObjectConst r : c["records"].as<JsonArrayConst>()) {
+    const char* n = r["name"] | "";
+    const char* sm = r["summary"] | "";
+    if (!strcasecmp(n, "Home")) scopy(d.homeRec, sm);
+    else if (!strcasecmp(n, "Road") || !strcasecmp(n, "Away")) scopy(d.roadRec, sm);
+  }
+  JsonArrayConst ls = c["linescores"].as<JsonArrayConst>();
+  for (JsonVariantConst v : ls) {
+    if (d.nLines >= sizeof(d.lines)) break;
+    d.lines[d.nLines++] = (int8_t)(int)(v["value"] | 0.0);
+  }
+  int n = 0;
+  for (JsonObjectConst l : c["leaders"].as<JsonArrayConst>()) {
+    const char* w = leaderWord(l["name"] | "");
+    JsonObjectConst top = l["leaders"][0];
+    if (!w || top.isNull() || n >= 3) continue;
+    scopy(d.lead[n].cat, w);
+    scopy(d.lead[n].name, top["athlete"]["shortName"] | "");
+    scopy(d.lead[n].val, top["displayValue"] | "");
+    n++;
+  }
+  scopy(d.starter, c["probables"][0]["athlete"]["shortName"] | "");
+  for (int i = 0; i < d.nLines; i++) sig = (sig ^ (uint8_t)d.lines[i]) * 16777619u;
+  sig = hashStr(sig, d.homeRec); sig = hashStr(sig, d.roadRec); sig = hashStr(sig, d.starter);
+  for (auto& l : d.lead) { sig = hashStr(sig, l.name); sig = hashStr(sig, l.val); }
+}
+
+static void fillDetails(Game& g, JsonObjectConst comp, JsonArrayConst cps) {
+  Details& d = g.det;
+  d.has = true;
+  scopy(d.venue, comp["venue"]["fullName"] | "");
+  uint32_t sig = hashStr(2166136261u, d.venue);
+  for (int i = 0; i < 2; i++) {
+    bool home = !strcmp(cps[i]["homeAway"] | "", "home");
+    fillSideDetail(home ? d.home : d.away, cps[i], sig);
+  }
+  d.sig = sig;
+}
+
 static bool isTeam(JsonObjectConst c, int team) {
   JsonObjectConst t = c["team"];
   const char* ab = t["abbreviation"] | "";
@@ -169,6 +234,7 @@ bool espnFind(const JsonDocument& doc, int team, time_t now, Game& out) {
       if (i == mine) g.mineHome = home;
     }
     if (g.state == GS_LIVE && (g.league == L_NFL || g.league == L_CFB)) fillFootball(g, e["competitions"][0]["situation"]);
+    if (doc["rich"] | false) fillDetails(g, e["competitions"][0], cps);
     // live beats everything; then a final from the last day and a half;
     // then the next one to start; then an older final
     long hours = (long)((g.start - now) / 3600);

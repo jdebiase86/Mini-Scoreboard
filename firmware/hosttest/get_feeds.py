@@ -34,6 +34,19 @@ def situation(s):
     return out
 
 
+def leaders(p):
+    out = []
+    for l in p.get("leaders", []) or []:
+        top = (l.get("leaders") or [None])[0]
+        if top: out.append({"name": l.get("name"), "leaders": [{"displayValue": top.get("displayValue"),
+                            "athlete": {"shortName": (top.get("athlete") or {}).get("shortName")}}]})
+    return out
+
+
+def probables(p):
+    return [{"athlete": {"shortName": ((x.get("athlete") or {}).get("shortName"))}} for x in (p.get("probables") or [])[:1]]
+
+
 def trim(d):
     keep = []
     for e in d.get("events", []):
@@ -43,11 +56,14 @@ def trim(d):
             "status": {"period": e["status"].get("period"), "displayClock": e["status"].get("displayClock"),
                        "type": {k: e["status"]["type"].get(k) for k in ("state", "name", "shortDetail")}},
             "competitions": [{
+                "venue": {"fullName": (c.get("venue") or {}).get("fullName")},
                 "broadcasts": [{"names": b.get("names", [])[:1]} for b in c.get("broadcasts", [])[:1]],
                 "situation": situation(c.get("situation")),
                 "competitors": [{
                     "homeAway": p.get("homeAway"), "score": p.get("score"),
-                    "records": [{"summary": r.get("summary")} for r in p.get("records", [])[:1]],
+                    "records": [{"name": r.get("name"), "summary": r.get("summary")} for r in p.get("records", [])],
+                    "linescores": [{"value": l.get("value")} for l in p.get("linescores", [])],
+                    "leaders": leaders(p), "probables": probables(p),
                     "team": {k: p["team"].get(k) for k in ("id", "abbreviation", "displayName", "shortDisplayName", "logo", "logoDark", "color")},
                 } for p in c["competitors"]]}]})
     return {"events": keep}
@@ -72,7 +88,7 @@ for lg, group, ahead in WANT:
     print(name, len(d["events"]), "events")
 
 # logos: only for the demo favourites and whoever they play (only the sizes the screens use)
-DEMO = {"nfl": {"NYG", "DAL"}, "cfb": {"FLA", "LSU", "BYU", "ISU"}, "mlb": {"NYY"}, "nhl": {"NYR"}, "nba": {"NY"}}
+DEMO = {"nfl": {"NYG", "DAL", "JAX"}, "cfb": {"FLA", "LSU", "BYU", "ISU", "IOWA", "WASH", "NEB"}, "mlb": {"NYY", "CLE"}, "nhl": {"NYR", "DET"}, "nba": {"NY", "DAL"}}
 seen = set()
 for f in sorted(os.listdir(os.path.join(HERE, "feeds"))):
     d = json.load(open(os.path.join(HERE, "feeds", f)))

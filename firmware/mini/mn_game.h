@@ -41,13 +41,37 @@ struct FbSit {
   char dd[16] = "";           // "4th & 10"
   char at[16] = "";           // "BYU 7"
   char playId[20] = "";       // changes with every play
-  char play[120] = "";        // the last play, in words
+  char play[200] = "";        // the last play, in words
   bool same(const FbSit& o) const {
     return has == o.has && down == o.down && distance == o.distance && yardLine == o.yardLine &&
            possession == o.possession && redzone == o.redzone && toAway == o.toAway && toHome == o.toHome &&
            winHome == o.winHome && driveStart == o.driveStart && !strcmp(dd, o.dd) && !strcmp(at, o.at) &&
            !strcmp(playId, o.playId);
   }
+};
+
+// The extras for the details cards (leaders, score by period, starters,
+// home / road records, stadium). ESPN sends them in the same feed, but they
+// take room while a feed is read, so the mini only asks for them while a
+// details card is open (see netWantDetails).
+struct Leader {
+  char cat[6] = "";       // "PASS", "RUSH", "PTS", "HR" ...
+  char name[16] = "";     // "T. Lawrence"
+  char val[28] = "";      // "72/104, 843 YDS, 8 TD, 2 INT"
+};
+struct SideDetail {
+  Leader lead[3];
+  int8_t lines[14] = {};  // points / goals / runs in each period; nLines of them
+  uint8_t nLines = 0;
+  char homeRec[10] = "";
+  char roadRec[10] = "";
+  char starter[16] = "";  // probable starting pitcher / goalie
+};
+struct Details {
+  bool has = false;
+  uint32_t sig = 0;       // changes when anything below does
+  SideDetail away, home;
+  char venue[34] = "";
 };
 
 struct Game {
@@ -61,6 +85,7 @@ struct Game {
   char net[14] = "";         // TV network
   TeamSide away, home;
   FbSit fb;
+  Details det;
   const TeamSide& mine() const { return mineHome ? home : away; }
   const TeamSide& them() const { return mineHome ? away : home; }
   bool same(const Game& o) const;   // nothing on screen would change

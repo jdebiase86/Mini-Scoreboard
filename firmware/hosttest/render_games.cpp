@@ -7,6 +7,7 @@
 #include "../mini/mn_ui.h"
 #include "../mini/mn_play.h"
 #include "../mini/mn_net.h"
+#include "../mini/mn_battery.h"
 #include "../mini/mn_logo.h"
 #include "../mini/mn_espn.h"
 #include "../mini/mn_settings.h"
@@ -26,6 +27,10 @@ static Game fakeG[MAX_PICKS];
 static bool fakeK[MAX_PICKS];
 bool netGame(int p, Game& out) { if (p < 0 || p >= MAX_PICKS || !fakeK[p]) return false; out = fakeG[p]; return true; }
 uint32_t netVersion() { return 1; }
+bool mnWifiUp() { return true; }
+bool batPresent() { return true; }
+int batPercent() { return 78; }
+bool batCharging() { return false; }
 
 struct FileSource : ByteSource {
   FILE* f;

@@ -6,9 +6,10 @@ No Arduino IDE needed. Works in Chrome or Edge on a Mac or a Windows PC
 Files here:
 - mini-hw-test-full.bin: the hardware test (screen, touch, LED, speaker,
   battery reading, Wi-Fi). Walks through 8 tests on the screen.
-- mini-0.4-full.bin: the Mini Scoreboard itself, stage 1 (screen, touch,
-  Wi-Fi setup, home screen, updates over Wi-Fi). Once this is on, later
-  versions install themselves over Wi-Fi.
+- mini-0.5-full.bin: the Mini Scoreboard itself (screen, touch, Wi-Fi setup
+  and Wi-Fi list, scores, football live screen, battery meter, details
+  cards, updates over Wi-Fi). Once this is on, later versions install
+  themselves over Wi-Fi.
 
 Steps:
 1. On this page on GitHub, tap the file you want, then the download button
