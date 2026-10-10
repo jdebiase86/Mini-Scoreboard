@@ -23,6 +23,10 @@ struct Ctx {
   char ppGoals[2][6], ppOpp[2][6];
   int ppSeen;
   uint32_t sig;
+  // the play being read, and the newest one so far (by wall-clock time)
+  char candKey[56], candText[200], candWhen[20], candWall[24];
+  bool haveCand;
+  char bestWall[24];
 };
 
 void scopy(char* dst, size_t n, const char* s) { strncpy(dst, s, n - 1); dst[n - 1] = 0; }
@@ -40,20 +44,48 @@ float numberOf(const char* s) {   // "465", "3-9", "28:19", "55"
   return v;
 }
 
+// the play lists: top-level "plays[N]" (basketball, hockey, baseball) or football's
+// "drives.current.plays[N]" / "drives.previous[J].plays[N]"
+bool playsPath(const char* p) {
+  const char* last = strrchr(p, '.');
+  last = last ? last + 1 : p;
+  if (strstr(p, "plays[")) {   // inside a play: only the parts we read
+    const char* d = strrchr(p, ']');
+    d = d && d[1] == '.' ? d + 2 : nullptr;
+    if (!d) return true;       // the play itself
+    return !strcmp(d, "text") || !strcmp(d, "wallclock") || !strcmp(d, "period") || !strncmp(d, "period.", 7) ||
+           !strcmp(d, "clock") || !strncmp(d, "clock.", 6);
+  }
+  if (!strcmp(last, "plays") || !strncmp(last, "plays[", 6)) return true;
+  if (!strncmp(p, "drives", 6)) {   // on the way down to a drive's plays
+    if (!strcmp(p, "drives") || !strcmp(p, "drives.current") || !strcmp(p, "drives.previous")) return true;
+    return !strncmp(p, "drives.previous[", 16) && !strchr(p + 16, '.');
+  }
+  return false;
+}
+
 bool enter(void* vc, const char* p) {
   // only the parts we read
   if (!strncmp(p, "boxscore", 8)) return p[8] == 0 || !strncmp(p, "boxscore.teams", 14);
   if (!strncmp(p, "leaders", 7)) return p[7] == 0 || p[7] == '[' || p[7] == '.';
-  if (!strncmp(p, "plays", 5) && (p[5] == 0 || p[5] == '[')) {
-    // plays[N] and its text, scores, period and clock only
-    const char* dot = strchr(p, '.');
-    if (!dot) return true;
-    dot++;
-    return !strcmp(dot, "text") || !strcmp(dot, "scoringPlay") || !strcmp(dot, "period") || !strncmp(dot, "period.", 7) ||
-           !strcmp(dot, "clock") || !strncmp(dot, "clock.", 6);
-  }
   (void)vc;
+  if (!strncmp(p, "plays", 5) && (p[5] == 0 || p[5] == '[')) return playsPath(p);
+  if (!strncmp(p, "drives", 6)) return playsPath(p);
   return false;
+}
+
+void scopy(char* dst, size_t n, const char* s);
+
+void commitPlay(Ctx& c) {
+  if (!c.haveCand) return;
+  c.haveCand = false;
+  if (!c.candText[0]) return;
+  if (c.bestWall[0] && c.candWall[0] && strcmp(c.candWall, c.bestWall) < 0) return;   // an older one
+  LiveInfo& o = *c.out;
+  scopy(o.play, sizeof(o.play), c.candText);
+  scopy(o.playWhen, sizeof(o.playWhen), c.candWhen);
+  o.hasPlay = true;
+  scopy(c.bestWall, sizeof(c.bestWall), c.candWall);
 }
 
 void leaf(void* vc, const char* p, const char* v) {
@@ -110,13 +142,23 @@ void leaf(void* vc, const char* p, const char* v) {
     }
     return;
   }
-  // the last play (the list runs oldest first, so each one replaces the one before)
-  if (sscanf(p, "plays[%d].%59s", &i, tail) == 2) {
-    if (!strcmp(tail, "text")) { scopy(o.play, sizeof(o.play), v); o.hasPlay = o.play[0] != 0; o.playWhen[0] = 0; }
-    else if (!strcmp(tail, "period.displayValue")) { scopy(o.playWhen, sizeof(o.playWhen), v); }
-    else if (!strcmp(tail, "clock.displayValue")) {
-      size_t n = strlen(o.playWhen);
-      if (n + 2 < sizeof(o.playWhen)) snprintf(o.playWhen + n, sizeof(o.playWhen) - n, " %s", v);
+  // plays: keep the newest one (by its wall-clock time; the lists run oldest first)
+  const char* pl = strstr(p, "plays[");
+  if (pl) {
+    const char* close = strchr(pl, ']');
+    if (!close) return;
+    size_t keyLen = close - p + 1;
+    if (keyLen >= sizeof(c.candKey)) return;
+    if (c.haveCand && (strlen(c.candKey) != keyLen || strncmp(c.candKey, p, keyLen))) commitPlay(c);
+    if (!c.haveCand) { memcpy(c.candKey, p, keyLen); c.candKey[keyLen] = 0; c.haveCand = true; c.candText[0] = c.candWhen[0] = c.candWall[0] = 0; }
+    const char* t = close + 2;
+    if (!strcmp(t, "text")) scopy(c.candText, sizeof(c.candText), v);
+    else if (!strcmp(t, "wallclock")) scopy(c.candWall, sizeof(c.candWall), v);
+    else if (!strcmp(t, "period.displayValue")) scopy(c.candWhen, sizeof(c.candWhen), v);
+    else if (!strcmp(t, "period.number") && !c.candWhen[0]) snprintf(c.candWhen, sizeof(c.candWhen), "Q%s", v);
+    else if (!strcmp(t, "clock.displayValue")) {
+      size_t n = strlen(c.candWhen);
+      if (n + 2 < sizeof(c.candWhen)) snprintf(c.candWhen + n, sizeof(c.candWhen) - n, " %s", v);
     }
   }
 }
@@ -140,6 +182,7 @@ bool liveParse(ByteSource& src, const Game& g, LiveInfo& out) {
   }
   c.boxSide[0] = c.boxSide[1] = c.leadSide[0] = c.leadSide[1] = -1;
   bool ok = JsonScan::run(src, enter, leaf, &c);
+  commitPlay(c);
   if (!ok) return false;
   if (c.ppSeen == 15) {   // hockey's power play: goals / chances
     LiveStat& s = out.st[out.nStats < 8 ? out.nStats : 7];

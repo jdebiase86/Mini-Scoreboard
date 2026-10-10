@@ -199,6 +199,19 @@ int main() {
   showDetail(DK_PLAY, det2, "e12_last_play_hockey", "nhl");
   showDetail(DK_STATS, cle2, "e13_stats_baseball_none", "mlb");
 
+  // 3c. 0.7: HOME up in the top bar, a wider last-play card, the ticker chooser
+  fakeG[jax2] = live; fakeG[jax2].det = fb.det;
+  playGame(settings.picks[jax2], fakeG[jax2], true, -1, PG_OPEN); save("f01_home_in_top_bar");
+  Game nx = live; snprintf(nx.fb.playId, sizeof(nx.fb.playId), "2");
+  snprintf(nx.fb.play, sizeof(nx.fb.play), "J.Hurts pass short right to D.Wicks for 11 yards to the JAX31, tackled by A.Walker and D.Lloyd. Penalty on JAX, defensive holding, declined.");
+  playGame(settings.picks[jax2], nx, true, 12, PG_DYN); save("f02_play_card_wider");
+  playAutoLabel("NFL");
+  playGame(settings.picks[jax2], live, true, 9, PG_OPEN); save("f03_ticker_tag");
+  playAutoLabel("");
+  playGame(settings.picks[jax2], live, true, -1, PG_OPEN); playStale(135, live); save("f05_old_tag");
+  { const char* names[] = {"All my teams", "NFL", "College football", "MLB", "NHL", "NBA"}; int total[] = {8, 2, 1, 1, 2, 2}, lv[] = {1, 1, 0, 0, 1, 0};
+    uiTicker(names, total, lv, 6, 1); save("f04_ticker_chooser"); }
+
   // 4. Wi-Fi list, the action sheet, the keyboard
   WiFi.found = {{"Home Wi-Fi", -48, 3}, {"Phone hotspot", -60, 3}, {"Coffee Shop Guest", -66, 0}, {"Neighbour 2G", -78, 3},
                 {"Airport Free WiFi", -82, 0}, {"Office", -85, 3}, {"Printer-Direct", -90, 3}, {"Guest", -91, 3}};
@@ -221,6 +234,9 @@ int main() {
   fakeMs = 1000;
   WiFi.st = WL_DISCONNECTED;
   uiJoining("Phone hotspot"); save("w07_joining");
+  // paging: down, then up (Joe saw the up arrow not working)
+  WiFi.joined = "Home Wi-Fi";
+  wifiStart(); wifiLoop(); wifiTap(455, 302); save("w09_page2"); wifiTap(417, 302); save("w10_back_to_page1");
   // joined and saved at once, and the note after forgetting the one you're on
   settings.nets[0] = {"Home Wi-Fi", "x"}; settings.nets[1] = {"Phone hotspot", "x"}; settings.nnets = 2;
   WiFi.joined = "Phone hotspot"; WiFi.st = WL_CONNECTED;

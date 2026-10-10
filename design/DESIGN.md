@@ -277,3 +277,54 @@ Small notes
 design/device_renders.png (Oct 7): the deeper buttons case with the mock-up
 screens on it - on a desk stand (orange stand is a placeholder, not designed
 yet) and lying flat. Drawn by case/scene.py.
+
+
+## v0.7 (Oct 10, not yet tried on the board)
+Done from the ideas below: dimmer dim (a third less); small HOME button in the top
+bar of the game screen (next to the TV network and battery), the bottom is
+free, so LAST PLAY moves left and the last-play card spans the screen; AUTO
+changes game every 15 s; ticker mode (tap the AUTO tag on a game screen, pick
+all my teams or one league; live games of that set take turns); compressed
+downloads fixed (the 44 KB is set aside before the connection, with a
+fallback, and the game page is never read uncompressed). Still open: the
+bigger layout change (everything shifted down, ticker on top) as pictures, and
+the battery calibration.
+Also in 0.7 (after Joe's screen stayed on old numbers for 10+ minutes while ESPN
+had moved on): the download guard wanted a 70 KB free block but the biggest
+block sits at 65-71 KB once logos have fragmented the memory, so score
+downloads could stop for good - now 48 KB, with a log line when it waits; an
+amber "OLD 2 min" tag in the top bar of a live game that hasn't heard from ESPN
+for 45 s; a watchdog (no update on a live game for 3 min: reconnect Wi-Fi; 7
+min: restart, which also clears the memory); football's last play comes from
+the game's own play list (the scoreboard feed's lastPlay lags during stoppages).
+
+## Ideas for next (Oct 10, from Joe's first day with 0.5 / 0.6)
+- Dim screen: a little dimmer than now (it is still quite readable).
+- HOME button: smaller, like EDIT, and moved up into the top bar of the game
+  screen (next to the TV network / battery), freeing the bottom of the screen.
+- Game screen layout idea: shift everything down; the last-play ticker comes in
+  at the top of the screen; logos, score and quarter in the middle; the field
+  (or the score-by-period area) at the bottom. Or keep the layout and give the
+  last-play card more room. Draw both as pictures first and let Joe pick.
+- Ticker mode: pick a sport, and the screen rotates through that sport's live
+  games (like AUTO but for one sport).
+- AUTO mode: change game every 15 s instead of 20 s.
+- Battery: sitting at 92% on the charger for a long time may just be full (the
+  ADC reads a bit low near 4.2 V); check the minute-by-minute millivolts in
+  mini.local/log from 0.6 on, and if needed add a small calibration offset
+  (measure the battery plug with a multimeter once).
+- Memory: after a score download the biggest free block is only about 71 KB,
+  but compressed downloads were only asked for with more than 110 KB, so they
+  never switched on. Reserve the 44 KB before connecting (and retry plain if
+  the connection then fails), and never read the big game page uncompressed.
+- Wi-Fi list paging: on the board the down arrow works but the up arrow does
+  not (the host picture program pages down and up fine with the same code), so
+  it is probably touch accuracy in the bottom-right corner: make both arrows
+  bigger and higher, and widen their hit zones. Swiping works as well.
+- Games page (idea, Oct 10): a GAMES tile as the last page after the favourites.
+  Small games that draw straight to the screen (no big buffers; the heap is
+  about 160 KB with a 70 KB biggest block): memory match with the team logos
+  already stored, snake, 2048, connect four against the board, sports trivia,
+  a penalty-kick or free-throw flick, a reaction test. With the stylus: a
+  drawing pad, minesweeper, sudoku, battleship. High scores kept in the board's
+  settings. Sounds when the speaker is in.

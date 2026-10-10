@@ -27,7 +27,7 @@
 #include "mn_log.h"
 #include "mn_version.h"
 
-enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL };
+enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER };
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
@@ -35,7 +35,8 @@ static int shownPick = 0;    // M_TEAM: which favourite (index into settings.pic
 static bool autoOn = false;  // M_TEAM: AUTO is rotating through the favourites
 static uint32_t autoAt = 0;  // when AUTO moves on
 static uint32_t seenVer = 0, shownSig = 0, shownShape = 0;
-static const uint32_t AUTO_MS = 20000;
+static const uint32_t AUTO_MS = 15000;
+static int tickerLeague = -1;   // AUTO rotates through this league's teams only (-1 = all my teams)
 static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
 static Mode wifiFrom = M_HOME;       // M_WIFI: where BACK goes
 static DetailKind detKind = DK_TEAMS; // M_DETAIL: which card
@@ -46,6 +47,8 @@ static bool dimmed = false;
 static const uint32_t DIM_AFTER_MS = 60000;
 
 static int autoPick(int from);
+static const char* const TICKER_WORDS[L_COUNT] = {"NFL", "COLLEGE", "MLB", "NHL", "NBA"};
+static int tickerRowLeague[8];   // M_TICKER: row -> league (row 0 = all)
 static void setMode(Mode m) { mode = m; modeAt = millis(); dirty = true; }
 
 static uint8_t level() { return BRIGHTS[settings.bright].level; }
@@ -167,10 +170,8 @@ static void openDetail(DetailKind k) {
   detKind = k;
   detailOpen(k);
   if (k == DK_TEAMS || k == DK_STATS || k == DK_PLAY) netWantDetails(shownPick);
-  Game g;
-  bool football = settings.npicks && netGame(shownPick, g) && (g.league == L_NFL || g.league == L_CFB);
-  // the game's own page: stats, leaders so far, the last play (football's last play is already here)
-  if (k == DK_TEAMS || k == DK_STATS || (k == DK_PLAY && !football)) netWantLive(shownPick);
+  // the game's own page: stats, leaders so far, the last play (it is ahead of the scoreboard's)
+  if (k == DK_TEAMS || k == DK_STATS || k == DK_PLAY) netWantLive(shownPick);
   setMode(M_DETAIL);
 }
 
@@ -205,6 +206,7 @@ static void handleTap(int x, int y) {
         return;
       }
       autoOn = hit == HIT_AUTO;
+      if (autoOn) { tickerLeague = -1; playAutoLabel(""); }
       shownPick = autoOn ? autoPick(-1) : hit;
       autoAt = millis() + AUTO_MS;
       setMode(M_TEAM);
@@ -216,6 +218,7 @@ static void handleTap(int x, int y) {
       bool known = settings.npicks && netGame(shownPick, g);
       PlayHit h = playGameHit(x, y, g, known);
       if (h == PH_NONE) break;
+      if (h == PH_AUTOTAG) { setMode(M_TICKER); break; }
       detKind = h == PH_CARD || h == PH_LASTPLAY ? DK_PLAY : h == PH_SIT ? DK_SIT : h == PH_STATS ? DK_STATS : DK_TEAMS;
       openDetail(detKind);
       break;
@@ -230,6 +233,17 @@ static void handleTap(int x, int y) {
     case M_WIFI:
       if (wifiTap(x, y) == WR_BACK) setMode(wifiFrom);
       break;
+    case M_TICKER: {
+      int row = uiTickerHit(x, y);
+      if (row == -2) { autoAt = millis() + AUTO_MS; setMode(M_TEAM); break; }
+      if (row < 0) break;
+      tickerLeague = row == 0 ? -1 : tickerRowLeague[row];
+      playAutoLabel(tickerLeague < 0 ? "" : TICKER_WORDS[tickerLeague]);
+      shownPick = autoPick(-1);
+      autoAt = millis() + AUTO_MS;
+      setMode(M_TEAM);
+      break;
+    }
     case M_SETUP:
     case M_FALLBACK:
       if (uiSetupWifiHit(x, y)) { wifiFrom = mode; setMode(M_WIFI); wifiStart(); dirty = false; }
@@ -246,17 +260,24 @@ static void handleTap(int x, int y) {
 }
 
 // AUTO's next favourite after `from`: the live games take turns; with none
-// live, every favourite does (their final, or next game)
+// live, every favourite does (their final, or next game). A ticker on one league
+// only looks at that league's teams (if it has none, at all of them).
+static bool inTicker(int i) { return tickerLeague < 0 || TEAMS[settings.picks[i]].league == tickerLeague; }
+
 static int autoPick(int from) {
   int n = settings.npicks;
   if (n < 1) return 0;
+  bool any = false;
+  for (int i = 0; i < n; i++) if (inTicker(i)) any = true;
+  if (!any) tickerLeague = -1;
   bool anyLive = false;
   for (int i = 0; i < n; i++) {
     Game g;
-    if (netGame(i, g) && g.state == GS_LIVE) anyLive = true;
+    if (inTicker(i) && netGame(i, g) && g.state == GS_LIVE) anyLive = true;
   }
   for (int k = 1; k <= n; k++) {
     int i = (from + k + n) % n;
+    if (!inTicker(i)) continue;
     Game g;
     bool live = netGame(i, g) && g.state == GS_LIVE;
     if (!anyLive || live) return i;
@@ -295,6 +316,31 @@ static void handleSwipe(TouchEvent ev, int sx, int sy) {
       break;
     default:
       break;
+  }
+}
+
+// Safety net: a live game that hasn't heard from ESPN for minutes means the downloads are stuck
+// (memory, Wi-Fi): kick the Wi-Fi first, then restart (which also clears a fragmented memory)
+static void watchdog() {
+  static uint32_t chk = 0, kicked = 0;
+  if (millis() - chk < 10000) return;
+  chk = millis();
+  if (WiFi.status() != WL_CONNECTED || !settings.npicks || millis() < 300000) return;
+  uint32_t worst = 0;
+  for (int i = 0; i < settings.npicks; i++) {
+    Game g;
+    if (netGame(i, g) && g.state == GS_LIVE) worst = max(worst, netAgeSecs(i));
+  }
+  if (worst > 180 && worst < 65535 && millis() - kicked > 120000) {
+    mnLog("watchdog: no live update for %u s - reconnecting Wi-Fi", (unsigned)worst);
+    kicked = millis();
+    WiFi.disconnect();
+    WiFi.reconnect();
+  }
+  if (worst > 420 && worst < 65535) {
+    mnLog("watchdog: no live update for %u s - restarting", (unsigned)worst);
+    delay(300);
+    ESP.restart();
   }
 }
 
@@ -352,9 +398,10 @@ void loop() {
   }
   batPoll();
   roam();
-  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || (mode == M_WIFI && !wifiBusy());
+  watchdog();
+  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || mode == M_TICKER || (mode == M_WIFI && !wifiBusy());
   if (idleScreen && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
-    lcdBrightness(max(10, level() / 8));
+    lcdBrightness(max(5, level() / 12));
     dimmed = true;
   }
 
@@ -434,6 +481,7 @@ void loop() {
       }
       playCardTick();
       uiBattery(false);
+      if (settings.npicks && known) playStale((int)netAgeSecs(shownPick), g);
       break;
     }
 
@@ -457,6 +505,40 @@ void loop() {
 
     case M_WIFI:
       wifiLoop();
+      break;
+
+    case M_TICKER:
+      if (dirty) {
+        static const char* names[8];
+        static int total[8], live[8];
+        int n = 0;
+        names[0] = "All my teams";
+        total[0] = settings.npicks;
+        live[0] = 0;
+        for (int i = 0; i < settings.npicks; i++) {
+          Game g;
+          if (netGame(i, g) && g.state == GS_LIVE) live[0]++;
+        }
+        n = 1;
+        for (int lg = 0; lg < L_COUNT; lg++) {
+          int t = 0, l = 0;
+          for (int i = 0; i < settings.npicks; i++) {
+            if (TEAMS[settings.picks[i]].league != lg) continue;
+            t++;
+            Game g;
+            if (netGame(i, g) && g.state == GS_LIVE) l++;
+          }
+          if (!t) continue;
+          names[n] = LEAGUE_NAMES[lg];
+          total[n] = t;
+          live[n] = l;
+          tickerRowLeague[n++] = lg;
+        }
+        int cur = 0;
+        for (int r = 1; r < n; r++) if (tickerRowLeague[r] == tickerLeague) cur = r;
+        uiTicker(names, total, live, n, cur);
+        dirty = false;
+      }
       break;
 
     case M_PICK:

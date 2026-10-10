@@ -10,7 +10,7 @@ struct FileSource : ByteSource {
 };
 int main(int, char** a) {
   FileSource in(a[1]);
-  GzSource gz(in);
+  GzSource gz; gz.begin(in);
   FILE* ref = fopen(a[2], "rb");
   if (!gz.ok() || !ref) { puts("FAIL: open"); return 1; }
   long n = 0, bad = 0;

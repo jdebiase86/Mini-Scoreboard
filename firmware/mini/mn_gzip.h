@@ -4,10 +4,13 @@
 #pragma once
 #include "mn_espn.h"
 
+// The memory is taken when the object is made (so it can be set aside before
+// a connection uses it all); begin() then starts on an answer.
 struct GzSource : ByteSource {
-  explicit GzSource(ByteSource& src);
+  GzSource();
   ~GzSource();
-  bool ok() const { return good; }        // false: no memory or not gzip
+  bool ok() const { return d && dict; }   // the memory was there
+  bool begin(ByteSource& src);            // reads the gzip header; false = not gzip
   bool failed() const { return bad; }     // the compressed data was broken
   int read() override;
   size_t readBytes(char* buf, size_t n) override;
@@ -15,7 +18,7 @@ struct GzSource : ByteSource {
  private:
   bool refill();
   bool header();
-  ByteSource& src;
+  ByteSource* src = nullptr;
   void* d = nullptr;                      // tinfl_decompressor
   uint8_t* dict = nullptr;
   uint8_t in[1024];
