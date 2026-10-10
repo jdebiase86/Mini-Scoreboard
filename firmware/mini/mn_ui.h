@@ -17,7 +17,7 @@ void uiBootHold(int secondsLeft);
 // More: page 0 has the first 5 plus MORE, page 1 the rest plus AUTO and a
 // back button. uiHomeHit: what a tap on that page is on (-1 none,
 // 0.. index into settings.picks, or one of the HIT_ values).
-static const int HIT_AUTO = 100, HIT_MORE = 101, HIT_BACK = 102, HIT_EDIT = 103, HIT_WIFI = 104;   // EDIT, WIFI: page 0 only
+static const int HIT_AUTO = 100, HIT_MORE = 101, HIT_BACK = 102, HIT_EDIT = 103, HIT_WIFI = 104, HIT_GAMES = 105;   // EDIT, WIFI, GAMES: page 0 only
 int uiHomePages();                            // 1 or 2
 void uiHome(int page);
 void uiHomeRefresh(int page);                 // redraws just the tiles whose game changed

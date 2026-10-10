@@ -11,6 +11,10 @@ void touchBegin();                  // applies the saved touch setup, if any
 enum TouchEvent { T_NONE = 0, T_TAP, T_SWIPE_LEFT, T_SWIPE_RIGHT, T_SWIPE_UP, T_SWIPE_DOWN };
 TouchEvent touchPoll(int& x, int& y);   // x, y: where the finger first pressed; call often
 bool touchDown();                   // a finger is on the screen right now
+bool touchHeldAt(int& x, int& y);   // where the finger is right now (false = not touching)
+// The finger's last press, for flick games: where it landed, where it lifted, and how long it was down
+struct TouchGesture { int x0 = 0, y0 = 0, x1 = 0, y1 = 0; uint32_t ms = 1; };
+const TouchGesture& touchGesture();
 uint32_t touchLastActivity();       // millis() of the last press
 
 // The first-start touch setup: four arrows to tap, then a check. Saves it.

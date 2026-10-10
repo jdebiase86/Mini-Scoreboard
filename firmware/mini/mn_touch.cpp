@@ -6,13 +6,16 @@
 static bool down = false;
 static int downX, downY, lastX, lastY;
 static const int SWIPE_MIN = 60;   // dots the finger has to travel to make a swipe
-static uint32_t lastSeen = 0, lastActivity = 0;
+static uint32_t lastSeen = 0, lastActivity = 0, downAt = 0;
+static TouchGesture gesture;
 
 void touchBegin() {
   if (settings.hasCal) lcd.setTouchCalibrate(settings.tcal);
 }
 
 bool touchDown() { return down; }
+bool touchHeldAt(int& x, int& y) { if (!down) return false; x = lastX; y = lastY; return true; }
+const TouchGesture& touchGesture() { return gesture; }
 uint32_t touchLastActivity() { return lastActivity; }
 
 TouchEvent touchPoll(int& x, int& y) {
@@ -22,7 +25,7 @@ TouchEvent touchPoll(int& x, int& y) {
   if (now) {
     lastSeen = ms;
     lastActivity = ms;
-    if (!down) { down = true; downX = tx; downY = ty; }
+    if (!down) { down = true; downX = tx; downY = ty; downAt = ms; }
     lastX = tx;
     lastY = ty;
     return T_NONE;
@@ -32,6 +35,8 @@ TouchEvent touchPoll(int& x, int& y) {
     down = false;
     x = downX;
     y = downY;
+    gesture.x0 = downX; gesture.y0 = downY; gesture.x1 = lastX; gesture.y1 = lastY;
+    gesture.ms = lastSeen > downAt ? lastSeen - downAt : 1;
     int dx = lastX - downX, dy = lastY - downY;
     if (abs(dx) >= SWIPE_MIN && abs(dx) > abs(dy) * 3 / 2) return dx < 0 ? T_SWIPE_LEFT : T_SWIPE_RIGHT;
     if (abs(dy) >= SWIPE_MIN && abs(dy) > abs(dx) * 3 / 2) return dy < 0 ? T_SWIPE_UP : T_SWIPE_DOWN;

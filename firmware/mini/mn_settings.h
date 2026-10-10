@@ -36,6 +36,7 @@ struct Settings {
   int npicks = 0;
   int tz = 0;
   int bright = 2;
+  int dimMode = 0;        // 0 dim when idle unless charging, 1 always dim, 2 never dim
   bool flip = false;      // screen turned upside down
   int colour = 0;         // screen colour mode 0-3 (see lcdBegin)
   uint16_t tcal[8];       // touch setup (LovyanGFX calibrateTouch numbers)

@@ -174,8 +174,8 @@ void uiHomeClock(bool force) {
   char s[24];
   int h = lt.tm_hour % 12;
   snprintf(s, sizeof(s), "%s %d:%02d %s", DAYS[lt.tm_wday % 7], h ? h : 12, lt.tm_min, lt.tm_hour < 12 ? "AM" : "PM");
-  lcd.fillRect(108, 4, 146, 26, C_BG);
-  text(F_S13, s, 181, 16, C_GREY, C_BG, middle_center);
+  lcd.fillRect(96, 4, 100, 26, C_BG);
+  text(F_S13, s, 146, 16, C_GREY, C_BG, middle_center);
 }
 
 // What sits in each of a page's six slots: an index into settings.picks,
@@ -222,14 +222,26 @@ static void arrowIcon(int cx, int cy, uint16_t col) {   // a fat right arrow
 // back button where "My Teams" sits on the first page
 static const int BK_X0 = 6, BK_Y0 = 3, BK_X1 = 112, BK_Y1 = 29;
 // EDIT (the team picker) and Wi-Fi in the first page's top bar, left of the battery
-static const int ED_X0 = 258, ED_Y0 = 3, ED_X1 = 330, ED_Y1 = 29;
-static const int WF_X0 = 336, WF_Y0 = 3, WF_X1 = 388, WF_Y1 = 29;
+static const int ED_X0 = 198, ED_Y0 = 3, ED_X1 = 254, ED_Y1 = 29;
+static const int GM_X0 = 258, GM_Y0 = 3, GM_X1 = 340, GM_Y1 = 29;
+static const int WF_X0 = 344, WF_Y0 = 3, WF_X1 = 390, WF_Y1 = 29;
 
 static void editButton() {
   tile(ED_X0, ED_Y0, ED_X1, ED_Y1, C_TILE, C_EDGE, 13);
   lcd.drawWideLine(ED_X0 + 13, 22, ED_X0 + 21, 10, 1.6f, C_WHITE);   // a pencil
   lcd.fillTriangle(ED_X0 + 10, 25, ED_X0 + 11, 20, ED_X0 + 14, 23, C_WHITE);
-  text(F_B12, "EDIT", ED_X0 + 46, 16, C_WHITE, C_TILE, middle_center);
+  text(F_B12, "EDIT", ED_X0 + 36, 16, C_WHITE, C_TILE, middle_center);
+}
+
+static void gamesButton() {
+  tile(GM_X0, GM_Y0, GM_X1, GM_Y1, C_AUTO_BG, C_AUTO_EDGE, 13);
+  // a little game pad
+  lcd.fillRoundRect(GM_X0 + 8, 10, 18, 11, 4, C_WHITE);
+  lcd.fillRect(GM_X0 + 11, 14, 5, 2, C_AUTO_BG);
+  lcd.fillRect(GM_X0 + 13, 12, 2, 6, C_AUTO_BG);
+  lcd.fillCircle(GM_X0 + 21, 14, 1, C_AUTO_BG);
+  lcd.fillCircle(GM_X0 + 23, 17, 1, C_AUTO_BG);
+  text(F_B12, "GAMES", GM_X0 + 54, 16, C_WHITE, C_AUTO_BG, middle_center);
 }
 
 static bool wifiShown = true;
@@ -256,6 +268,7 @@ void uiHome(int page) {
   if (page == 0) {
     text(F_B16, "My Teams", 12, 16, C_WHITE, C_BG, middle_left);
     editButton();
+    gamesButton();
     uiHomeWifiIcon(true);
   } else {
     tile(BK_X0, BK_Y0, BK_X1, BK_Y1, C_TILE, C_EDGE, 13);
@@ -326,6 +339,7 @@ int uiHomeHit(int page, int x, int y) {
   if (page > 0 && x < BK_X1 + 16 && y < BK_Y1 + 6) return HIT_BACK;
   if (page == 0 && x >= ED_X0 - 6 && x < ED_X1 + 3 && y < ED_Y1 + 4) return HIT_EDIT;
   if (page == 0 && x >= WF_X0 - 3 && x < WF_X1 + 6 && y < WF_Y1 + 4) return HIT_WIFI;
+  if (page == 0 && x >= GM_X0 - 3 && x < GM_X1 + 3 && y < GM_Y1 + 4) return HIT_GAMES;
   int slot[6];
   int n = pageSlots(page, slot);
   for (int k = 0; k < n; k++) {
@@ -337,8 +351,9 @@ int uiHomeHit(int page, int x, int y) {
 }
 
 void uiTileFlash(int page, int hit) {
-  if (hit == HIT_BACK || hit == HIT_EDIT || hit == HIT_WIFI) {
+  if (hit == HIT_BACK || hit == HIT_EDIT || hit == HIT_WIFI || hit == HIT_GAMES) {
     if (hit == HIT_BACK) lcd.drawRoundRect(BK_X0, BK_Y0, BK_X1 - BK_X0, BK_Y1 - BK_Y0, 13, C_WHITE);
+    else if (hit == HIT_GAMES) lcd.drawRoundRect(GM_X0, GM_Y0, GM_X1 - GM_X0, GM_Y1 - GM_Y0, 13, C_WHITE);
     else if (hit == HIT_WIFI) lcd.drawRoundRect(WF_X0, WF_Y0, WF_X1 - WF_X0, WF_Y1 - WF_Y0, 13, C_WHITE);
     else lcd.drawRoundRect(ED_X0, ED_Y0, ED_X1 - ED_X0, ED_Y1 - ED_Y0, 13, C_WHITE);
     delay(90);

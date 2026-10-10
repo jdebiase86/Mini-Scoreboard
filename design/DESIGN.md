@@ -355,3 +355,31 @@ themselves off if the answer won't unpack), the guard is 30 KB, and the
 watchdog restarts the mini after 90 s of waiting for memory. The game page is
 read plain, every 30 s, only while a card is open. Compressed downloads can come back
 once they are checked on the board with a log.
+
+## v0.9: the GAMES page (Oct 10, not yet tried on the board)
+GAMES button in the home header, and one more page after the last favourite when
+swiping through the teams. Eleven games (firmware/mini/mn_g_*.cpp, menu in
+mn_games.cpp), all drawing straight to the screen:
+- Penalty Kick and Free Throw: flick up; speed = power, direction = aim; five
+  shots a round; score enough to go up a level (keeper sharper / power window
+  narrower).
+- Logo Match: team logos from the board's storage (your teams and their
+  opponents; symbols if not enough); 8 levels (more cards, then a move limit,
+  then a timer).
+- Sudoku: easy / medium / hard (medium and hard unlock), numbers pad, notes,
+  hints, wrong numbers in red, kept if you leave. Puzzles are made on the board
+  (always one answer).
+- Snake (swipe or tap to steer, walls wrap), 2048 (swipe, undo), Cheer Simon,
+  Connect Four against the mini (easy / medium / hard, unlock by winning),
+  Sports Trivia (56 questions, 10 a round, 15 s each, 7 right to go up),
+  Reaction, Coin and Dice.
+- Scores and levels are kept in the board's settings (namespace "games").
+- Dimming: settings page "When nobody touches the screen": dim unless charging
+  (default), always, or never; a plugged-in board (charging, or 4.15 V or more)
+  doesn't dim in the default mode.
+- Tested on a computer: the sudoku maker (120 puzzles, all with exactly one
+  answer), connect four (the mini beats a random player), 2048 sliding, and
+  random taps / flicks / swipes in every game with a memory checker
+  (hosttest/test_games.sh, fuzz_games.sh); pictures in design/mini_stage5.png
+  (render_games2.sh). Not tried on the board.
+- Sound: when the speaker is in (Simon and the shots first).
