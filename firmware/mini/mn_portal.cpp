@@ -4,6 +4,7 @@
 #include "mn_lcd.h"
 #include "mn_log.h"
 #include "mn_diag.h"
+#include "mn_net.h"
 #include "mn_version.h"
 #include "mn_dns.h"
 #include <WiFi.h>
@@ -161,7 +162,19 @@ static void handleRoot() {
   h += "<label class=f>Data use</label>" + sel("saver", settings.saver, SAVERS, 3) +
        "<p class=hint>Saving data checks scores a little less often (live games every 8 seconds instead of 5) and "
        "never downloads the same logo over and over. Good on a phone hotspot.</p>";
-  h += "</section><button type=submit>Save</button></form>";
+  h += "</section>";
+  if (home) {
+    static const struct { const char* k; const char* label; } FXS[] = {
+        {"touchdown", "Touchdown"}, {"fieldgoal", "Field goal"}, {"nogood", "Kick no good"}, {"theirtd", "Their touchdown"}, {"goal", "Goal"},
+        {"homerun", "Home run"}, {"three", "Three"}, {"win", "Win"}, {"kickoff", "Kickoff"}, {"halftime", "Halftime"}, {"flag", "Flag"},
+        {"firstdown", "First down"}, {"picked", "Picked off"}, {"fumble", "Fumble"}, {"sack", "Sack"}, {"stopped", "Stopped"},
+        {"stonewall", "Stonewalled"}, {"punt", "Punt-astic"}, {"wentforit", "Went for it"}, {"nopunt", "No punt"}, {"turnover", "Turnover"}};
+    h += "<section><h2>Try the animations</h2><p class=hint>Tap one and watch the mini's screen. (It plays on whichever screen is up, "
+         "and tapping the screen ends it.)</p><div class=fx>";
+    for (auto& f : FXS) h += String("<button type=button onclick=\"fetch('/fxtest?k=") + f.k + "')\">" + f.label + "</button>";
+    h += "</div></section>";
+  }
+  h += "<button type=submit>Save</button></form>";
 
   if (home) {
     h += "<section><h2>Touch</h2><p class=hint>If taps land in the wrong place, redo the touch setup "
@@ -306,6 +319,7 @@ static void routes() {
     portalSavedAt = millis();
   });
   server.on("/screen", HTTP_GET, handleScreen);
+  server.on("/fxtest", HTTP_GET, [] { server.send(netTestFx(server.arg("k").c_str()) ? 200 : 404, "text/plain", "ok"); });
   server.on("/battery", HTTP_GET, [] { server.send(200, "text/plain; charset=utf-8", diagBatCsv()); });
   server.on("/log", HTTP_GET, [] { server.send(200, "text/plain; charset=utf-8", mnLogText()); });
   server.on("/favicon.ico", HTTP_GET, [] { server.send(404, "text/plain", ""); });

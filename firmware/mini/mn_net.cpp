@@ -5,6 +5,7 @@
 #include "mn_tls.h"
 #include "mn_gzip.h"
 #include "mn_live.h"
+#include "mn_fx.h"
 #include "mn_log.h"
 #include <WiFi.h>
 #include <Preferences.h>
@@ -143,6 +144,97 @@ bool netTeamSide(int pick, TeamSide& out) {
   strncpy(out.abbr, marks[pick].abbr, 7); strncpy(out.name, marks[pick].name, 21);
   return true;
 }
+
+// What just happened in a favourite's game (see mn_fx.h): a few wait here at most for the screen to take them.
+struct QFx { FxSpec f; uint32_t at; };
+static QFx fxq[4];
+static int fxHead = 0, fxCount = 0;
+static void fxPush(const FxSpec& f) {
+  portENTER_CRITICAL(&mux);
+  if (fxCount < 4) { QFx& q = fxq[(fxHead + fxCount) % 4]; q.f = f; q.at = millis(); fxCount++; }
+  portEXIT_CRITICAL(&mux);
+}
+bool netTakeFx(FxSpec& out) {
+  for (;;) {
+    bool got = false, stale = false;
+    portENTER_CRITICAL(&mux);
+    if (fxCount) {
+      QFx& q = fxq[fxHead];
+      stale = millis() - q.at > 45000UL;   // too late to be news
+      if (!stale) { out = q.f; got = true; }
+      fxHead = (fxHead + 1) % 4;
+      fxCount--;
+    }
+    portEXIT_CRITICAL(&mux);
+    if (got) return true;
+    if (!stale) return false;
+  }
+}
+
+// A test animation (the setup page's "Try the animations"): made from the first favourite that has a game, or made-up teams
+bool netTestFx(const char* name) {
+  struct N { const char* n; FxKind k; const char* word; bool tape; };
+  static const N T[] = {
+    {"touchdown", FX_TOUCHDOWN, "TOUCHDOWN", false}, {"fieldgoal", FX_FIELDGOAL, "IT'S GOOD!", false}, {"nogood", FX_NOGOOD, "NO GOOD", true},
+    {"theirtd", FX_THEIRSCORE, "TOUCHDOWN", true}, {"goal", FX_GOAL, "GOAL!", false}, {"homerun", FX_HOMERUN, "HOME RUN!", false},
+    {"three", FX_THREE, "THREE!", false}, {"win", FX_WIN, "", false}, {"kickoff", FX_KICKOFF, "KICKOFF", false},
+    {"halftime", FX_QUARTER, "HALFTIME", false}, {"flag", FX_FLAG, "FLAG", false}, {"firstdown", FX_FIRSTDOWN, "FIRST DOWN!", false},
+    {"picked", FX_PICKED, "PICKED OFF!", false}, {"fumble", FX_FUMBLE, "FUMBLE!", false}, {"sack", FX_SACK, "SACKED!", false},
+    {"stopped", FX_STOPPED, "STOPPED!", false}, {"stonewall", FX_STONEWALL, "STONEWALLED!", false}, {"punt", FX_PUNT, "PUNT-ASTIC!", false},
+    {"wentforit", FX_WENTFORIT, "WENT FOR IT!", false}, {"nopunt", FX_NOPUNT, "NO PUNT INTENDED", false}, {"turnover", FX_TURNOVER, "TURNOVER", true}};
+  const N* t = nullptr;
+  for (const N& e : T) if (!strcmp(e.n, name)) t = &e;
+  if (!t) return false;
+  static FxSpec f;
+  f = FxSpec();
+  f.kind = t->k; f.tape = t->tape; f.theirs = t->tape;
+  bool have = false;
+  portENTER_CRITICAL(&mux);
+  for (int i = 0; i < MAX_PICKS && !have; i++) {
+    if (slots[i].team >= 0 && slots[i].known && slots[i].g.state != GS_NONE) { f.mine = slots[i].g.mine(); f.them = slots[i].g.them(); f.league = slots[i].g.league; have = true; }
+  }
+  portEXIT_CRITICAL(&mux);
+  if (!have) {
+    strcpy(f.mine.abbr, "NYG"); strcpy(f.mine.name, "Giants"); f.mine.color = 0x0B2265; f.mine.score = 28;
+    strcpy(f.them.abbr, "PHI"); strcpy(f.them.name, "Eagles"); f.them.color = 0x004C54; f.them.score = 17;
+  }
+  if (!f.mine.score && !f.them.score) { f.mine.score = 28; f.them.score = 17; }
+  char a[8], b[8];
+  for (int i = 0; i < 7; i++) { a[i] = toupper(f.mine.abbr[i]); b[i] = toupper(f.them.abbr[i]); }
+  a[7] = b[7] = 0;
+  snprintf(f.sub, sizeof(f.sub), "%s %d   %s %d", a, (int)f.mine.score, b, (int)f.them.score);
+  snprintf(f.word, sizeof(f.word), "%s", t->word);
+  switch (t->k) {
+    case FX_WIN: {
+      char w[22]; for (int i = 0; i < 21; i++) w[i] = toupper(f.mine.name[i]); w[21] = 0;
+      size_t len = strlen(w);
+      snprintf(f.word, sizeof(f.word), "%.12s %s", w[0] ? w : a, len && w[len - 1] == 'S' ? "WIN" : "WINS");
+      snprintf(f.sub, sizeof(f.sub), "FINAL  %d - %d", (int)f.mine.score, (int)f.them.score);
+      break;
+    }
+    case FX_NOGOOD: snprintf(f.sub, sizeof(f.sub), "%s KEEP %d", a, (int)f.mine.score); break;
+    case FX_KICKOFF: snprintf(f.sub, sizeof(f.sub), "%s  AT  %s", b, a); break;
+    case FX_FLAG: snprintf(f.sub, sizeof(f.sub), "DEFENSIVE HOLDING, 10 YARDS"); break;
+    case FX_FIRSTDOWN: snprintf(f.sub, sizeof(f.sub), "1ST & 10"); break;
+    case FX_PICKED: snprintf(f.sub, sizeof(f.sub), "INTERCEPTION - %s BALL", a); break;
+    case FX_FUMBLE: snprintf(f.sub, sizeof(f.sub), "%s BALL - RECOVERED", a); break;
+    case FX_SACK: snprintf(f.sub, sizeof(f.sub), "%s SACKED", b); break;
+    case FX_STOPPED: snprintf(f.sub, sizeof(f.sub), "%s FACE 4TH & 3", b); break;
+    case FX_STONEWALL: snprintf(f.sub, sizeof(f.sub), "TURNOVER ON DOWNS - %s BALL", a); break;
+    case FX_PUNT: snprintf(f.sub, sizeof(f.sub), "%s HAVE TO PUNT", b); break;
+    case FX_WENTFORIT: snprintf(f.sub, sizeof(f.sub), "AND MADE IT - FIRST DOWN"); break;
+    case FX_NOPUNT: snprintf(f.sub, sizeof(f.sub), "%s PUNT", a); break;
+    case FX_TURNOVER: snprintf(f.sub, sizeof(f.sub), "PICKED OFF - %s BALL", b); break;
+    default: break;
+  }
+  fxPush(f);
+  return true;
+}
+
+// Who is being looked at: a live game that nobody is watching is checked less often (saves data)
+static uint32_t watchUntil[MAX_PICKS];
+void netWatch(int pick) { if (pick >= 0 && pick < MAX_PICKS) watchUntil[pick] = millis() + 20000UL; }
+void netWatchAll() { for (int i = 0; i < MAX_PICKS; i++) watchUntil[i] = millis() + 20000UL; }
 
 static bool daily(League l) { return l == L_MLB || l == L_NHL || l == L_NBA; }
 
@@ -347,10 +439,13 @@ bool netSaverOn() {
   return (gw[0] == 172 && gw[1] == 20 && gw[2] == 10) || (gw[0] == 192 && gw[1] == 168 && gw[2] == 43);
 }
 
-static uint32_t interval(const Game& g, time_t now) {
+static uint32_t interval(const Game& g, time_t now, int slot) {
   const uint32_t HOUR = 3600000UL;
   const bool saver = netSaverOn();
-  if (g.state == GS_LIVE) return saver ? 8000 : 5000;
+  if (g.state == GS_LIVE) {
+    bool watched = (int32_t)(watchUntil[slot] - millis()) > 0;
+    return watched ? (saver ? 8000 : 5000) : (saver ? 30000 : 15000);
+  }
   if (g.state == GS_PRE) {
     long toStart = (long)(g.start - now);
     if (toStart <= 600) return saver ? 60000 : 30000;   // includes a start that ESPN hasn't called "live" yet
@@ -418,7 +513,7 @@ static void netTask(void*) {
           uint32_t next = 3600000UL;
           time_t newDay = s.dayAt;
           if (espnFind(doc, s.team, now, g)) {
-            next = interval(g, now);
+            next = interval(g, now, i);
             // a final long past, found on a day we looked ahead to: back to today's feed
             if (g.state == GS_POST && s.dayAt && now - g.start > 12 * 3600) { newDay = 0; next = 1000; }
           } else if (daily(lg)) {
@@ -426,6 +521,17 @@ static void netTask(void*) {
             time_t cand = (s.dayAt ? s.dayAt : noonToday(now)) + 86400;
             if (cand - now <= 7 * 86400) { newDay = cand; next = 1500; }
             else newDay = 0;
+          }
+          // ESPN sometimes drops the last play for one look: keep the one we had, so it doesn't count as new when it returns
+          if (s.known && !g.fb.playId[0] && !strcmp(s.g.id, g.id) && s.g.fb.playId[0]) {
+            memcpy(g.fb.playId, s.g.fb.playId, sizeof(g.fb.playId));
+            memcpy(g.fb.play, s.g.fb.play, sizeof(g.fb.play));
+          }
+          // what changed since the look before (only a recent one counts)
+          if (s.known && s.okAt && millis() - s.okAt < 210000UL) {
+            static FxSpec spec;
+            if (detectEvent(s.g, g, spec) != FX_NONE) { mnLog("%s: %s", TEAMS[s.team].abbr, spec.word); fxPush(spec); }
+            if (detectWin(s.g, g, spec)) { mnLog("%s: %s", TEAMS[s.team].abbr, spec.word); fxPush(spec); }
           }
           portENTER_CRITICAL(&mux);
           bool changed = !s.known || !s.g.same(g);
