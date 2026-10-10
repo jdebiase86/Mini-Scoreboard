@@ -494,6 +494,14 @@ mn_fx.cpp (the pictures). A tap on the screen ends an animation. Good news = tea
 - Pictures: design/mini_fx.png (frames of every animation, drawn by the real code: hosttest/render_fx.sh).
 - Sound later: the hooks would go where fxStart is called (touchdown horn, goal horn, crowd, kick thud).
 
+## v0.13: the big animations redone in the LED board's style (Oct 11, not yet tried on the board)
+Joe: the 0.12 home run and field goal looked jagged. Reworked after Scoreboard's sb_fx.cpp: a dark flat stage, fireworks (sparks with
+trails, gravity, fading, three speeds), shock-wave rings, white flashes, words that blink between white and the team colour, and for
+the home run a night ballpark (lights, crowd, wall, batter, ball with a fading trail), for the three a court with the ball into the
+hoop, for the field goal a side view with the ball arcing to big yellow posts (flash between them, then fireworks). Touchdown, goal,
+win use the same pieces. Sparks never draw over the logo and words (a protected box), and rubbing out never touches it. Pictures:
+design/mini_fx_big.png. The banners (rays, stripes, tape, bricks) are unchanged.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
