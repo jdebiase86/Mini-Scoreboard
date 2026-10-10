@@ -23,11 +23,18 @@ subprocess.run([sys.executable, os.path.join(HERE, "deepen.py"), BASE, tmp, str(
 deep = trimesh.load(tmp)
 def M(m): return manifold3d.Manifold(manifold3d.Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
 BOT = -8.65 - H
-# Screw holes: measured on the real board (centre to centre 103.68 / 103.99 across, 53.36 / 53.54 up and down), so the
-# average of each pair is used about the old hole centre. The designer's holes (105.1 x 54.1 apart) are filled in.
+# Screw holes: the real board's four measured centre-to-centre distances (metal inserts, no give): bottom pair 103.68,
+# top pair 103.99, left pair 53.36, right pair 53.54 mm. Taking the bottom edge level and the left edge upright, the
+# four distances fix the corners exactly (solved here), centred on the old hole centre. The designer's holes
+# (105.1 x 54.1 apart) are filled in.
 OLD = ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6))
-CX, CY, HX, HY = 55.05, 30.55, (103.68 + 103.99) / 4, (53.36 + 53.54) / 4
-HOLES = tuple((CX + sx * HX, CY + sy * HY) for sx in (-1, 1) for sy in (-1, 1))
+def board_holes(bot, top, left, right):
+    from scipy.optimize import fsolve
+    tx, ty = fsolve(lambda p: [(p[0] - bot) ** 2 + p[1] ** 2 - right ** 2, p[0] ** 2 + (p[1] - left) ** 2 - top ** 2], [bot, left])
+    pts = [(0, 0), (bot, 0), (0, left), (tx, ty)]
+    mx = sum(p[0] for p in pts) / 4; my = sum(p[1] for p in pts) / 4
+    return tuple((55.05 + p[0] - mx, 30.55 + p[1] - my) for p in pts)
+HOLES = board_holes(103.68, 103.99, 53.36, 53.54)
 acc = M(deep)
 # 1. heat-set insert holes (M3, 4.5 mm wide) are only 4.7 mm deep: fill the rest of each hole so an insert can't sink
 POST_TOP = -1.7

@@ -66,7 +66,7 @@ move. The speaker pocket now starts at x = 14.4 (speaker centre 29.5) and the ba
 
 Draft 6 (Oct 10, after fitting the board): the real board's four screw holes are 103.68 / 103.99 mm apart
 across and 53.36 / 53.54 mm up and down (centre to centre, metal inserts, no give), against 105.1 x 54.1
-in the designer's files. The designer's holes are filled in and new ones cut at the average spacing
-(103.84 x 53.45) about the old centre, in both base and lid (the lid keeps a thin collar around each
+in the designer's files. The designer's holes are filled in and new ones cut so all four measured distances come out
+exactly (bottom edge level, left edge upright, solved in build_case.py), centred on the old centre, in both base and lid (the lid keeps a thin collar around each
 screw-head recess). The lid's screen pocket is 1.0 mm deeper (ceiling z 3.0 to 4.0, front lip 1.2 mm) so
 the screen face sits flush. The stylus holder stays on the same side for now.
