@@ -143,8 +143,13 @@ built in the stages below.
    over Wi-Fi from this repo's releases. Screens: design/mini_stage1.png
    (drawn by the real code, firmware/hosttest). Hardware test:
    firmware/mini_hw_test. Both flash from the browser (flash/README.md).
-2. Scores: ESPN per favourite team, logos, live / final / upcoming tiles,
-   AUTO rotation.
+2. Scores (v0.3, written Oct 10, not yet tried on the board): ESPN per
+   favourite team (one league feed at a time, filtered while streaming), logos
+   from ESPN's own picture server kept in flash, live / final / upcoming
+   tiles with live games first, a basic game screen for every sport (logos,
+   score, clock, status), AUTO rotation every 20 s. Football field strip,
+   win chance bar and last-play card are stage 3. Pictures drawn from real
+   ESPN feeds: design/mini_stage2.png.
 3. Game screens: football field strip with the drive, win chance bar, last
    play pop-up; then the other sports.
 4. Red zone and play animations (touchdown, field goal, goal, home run and

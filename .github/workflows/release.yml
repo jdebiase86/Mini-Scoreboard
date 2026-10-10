@@ -50,6 +50,7 @@ jobs:
           arduino-cli config init --overwrite
           arduino-cli config set library.enable_unsafe_install true
           arduino-cli lib install --git-url https://github.com/lovyan03/LovyanGFX.git#1.2.7
+          arduino-cli lib install --git-url https://github.com/bitbank2/PNGdec.git#1.1.7
           arduino-cli lib list
           pip install pyserial
 

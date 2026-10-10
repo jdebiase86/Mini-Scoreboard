@@ -19,6 +19,8 @@
 #include "mn_ota.h"
 #include "mn_ui.h"
 #include "mn_picker.h"
+#include "mn_net.h"
+#include "mn_play.h"
 #include "mn_log.h"
 #include "mn_version.h"
 
@@ -26,12 +28,17 @@ enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PI
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
-static int shownTeam = -1;   // M_TEAM: index into TEAMS, -1 = AUTO
+static int shownPick = 0;    // M_TEAM: which favourite (index into settings.picks)
+static bool autoOn = false;  // M_TEAM: AUTO is rotating through the favourites
+static uint32_t autoAt = 0;  // when AUTO moves on
+static uint32_t seenVer = 0, shownSig = 0;
+static const uint32_t AUTO_MS = 20000;
 static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
 static String apName;
 static bool dimmed = false;
 static const uint32_t DIM_AFTER_MS = 60000;
 
+static int autoPick(int from);
 static void setMode(Mode m) { mode = m; modeAt = millis(); dirty = true; }
 
 static uint8_t level() { return BRIGHTS[settings.bright].level; }
@@ -52,6 +59,7 @@ static void onConnected() {
   configTzTime(TZS[settings.tz].posix, "pool.ntp.org", "time.nist.gov", "time.google.com");
   portalStartHome();
   otaStart();
+  netStart();
   setMode(M_CONNECTED);
 }
 
@@ -160,7 +168,9 @@ static void handleTap(int x, int y) {
         dirty = true;
         return;
       }
-      shownTeam = hit == HIT_AUTO ? -1 : settings.picks[hit];
+      autoOn = hit == HIT_AUTO;
+      shownPick = autoOn ? autoPick(-1) : hit;
+      autoAt = millis() + AUTO_MS;
       setMode(M_TEAM);
       break;
     }
@@ -171,11 +181,30 @@ static void handleTap(int x, int y) {
       setMode(M_HOME);   // a tap skips the message
       break;
     case M_PICK:
-      if (pickerTap(x, y)) { homePage = 0; setMode(M_HOME); }
+      if (pickerTap(x, y)) { netPicksChanged(); homePage = 0; setMode(M_HOME); }
       break;
     default:
       break;
   }
+}
+
+// AUTO's next favourite after `from`: the live games take turns; with none
+// live, every favourite does (their final, or next game)
+static int autoPick(int from) {
+  int n = settings.npicks;
+  if (n < 1) return 0;
+  bool anyLive = false;
+  for (int i = 0; i < n; i++) {
+    Game g;
+    if (netGame(i, g) && g.state == GS_LIVE) anyLive = true;
+  }
+  for (int k = 1; k <= n; k++) {
+    int i = (from + k + n) % n;
+    Game g;
+    bool live = netGame(i, g) && g.state == GS_LIVE;
+    if (!anyLive || live) return i;
+  }
+  return (from + 1 + n) % n;
 }
 
 // Swipes are shortcuts; every one of them has a button that does the same.
@@ -190,12 +219,9 @@ static void handleSwipe(TouchEvent ev) {
       if (ev == T_SWIPE_RIGHT && homePage == 1) { homePage = 0; dirty = true; }
       break;
     case M_TEAM: {
-      if (shownTeam < 0 || settings.npicks < 2 || (ev != T_SWIPE_LEFT && ev != T_SWIPE_RIGHT)) break;
-      int i = 0;
-      while (i < settings.npicks && settings.picks[i] != shownTeam) i++;
-      if (i == settings.npicks) break;
-      i = (i + (ev == T_SWIPE_LEFT ? 1 : settings.npicks - 1)) % settings.npicks;
-      shownTeam = settings.picks[i];
+      if (settings.npicks < 2 || (ev != T_SWIPE_LEFT && ev != T_SWIPE_RIGHT)) break;
+      shownPick = (shownPick + (ev == T_SWIPE_LEFT ? 1 : settings.npicks - 1)) % settings.npicks;
+      autoAt = millis() + AUTO_MS;   // a swipe is a pick of your own: AUTO waits a full turn
       dirty = true;
       break;
     }
@@ -220,6 +246,7 @@ void loop() {
   }
   if (portalChanged) {
     portalChanged = false;
+    netPicksChanged();
     lcdBrightness(level());
     dimmed = false;
     if (mode == M_HOME || mode == M_TEAM) { homePage = 0; setMode(M_HOME); }
@@ -283,13 +310,36 @@ void loop() {
       break;
 
     case M_HOME:
-      if (dirty) { uiHome(homePage); dirty = false; }
-      else uiHomeClock(false);
+      if (dirty) { uiHome(homePage); dirty = false; seenVer = netVersion(); }
+      else {
+        uiHomeClock(false);
+        if (seenVer != netVersion()) { seenVer = netVersion(); uiHomeRefresh(homePage); }
+      }
       break;
 
-    case M_TEAM:
-      if (dirty) { uiTeam(shownTeam); dirty = false; }
+    case M_TEAM: {
+      if (shownPick >= settings.npicks) shownPick = 0;
+      Game g;
+      bool known = settings.npicks && netGame(shownPick, g);
+      int left = autoOn ? max(0, (int)((int32_t)(autoAt - millis()) / 1000)) : -1;
+      if (autoOn && (int32_t)(millis() - autoAt) >= 0) {
+        shownPick = autoPick(shownPick);
+        autoAt = millis() + AUTO_MS;
+        dirty = true;
+        known = settings.npicks && netGame(shownPick, g);
+        left = (int)(AUTO_MS / 1000);
+      }
+      uint32_t sig = settings.npicks ? playGameSig(g, known) : 0;
+      if (dirty || sig != shownSig) {
+        if (settings.npicks) playGame(settings.picks[shownPick], g, known, left);
+        shownSig = sig;
+        dirty = false;
+      } else if (autoOn) {
+        static int lastLeft = -2;
+        if (left != lastLeft) { playAutoTag(left); lastLeft = left; }
+      }
       break;
+    }
 
     case M_PICK:
       if (dirty) { pickerDraw(); dirty = false; }

@@ -1,11 +1,11 @@
 # Mini Scoreboard firmware
 
 - mini/: the Mini Scoreboard (Arduino, esp32 core 2.0.9, LovyanGFX 1.2.7,
-  ArduinoJson 7.4.2). Board: ESP32 Dev Module, 4 MB flash, partition scheme
+  ArduinoJson 7.4.2, PNGdec 1.1.7). Board: ESP32 Dev Module, 4 MB flash, partition scheme
   "Minimal SPIFFS" (two 1.9 MB program slots for updates over Wi-Fi).
 - mini_hw_test/: the hardware test (one file, LovyanGFX only).
 - hosttest/: draws the real screens on a computer (render_screens.sh ->
-  design/mini_stage1.png, design/mini_picker_real.png) and the real setup page (page_host.sh ->
+  design/mini_stage1.png, design/mini_picker_real.png) and the score screens from real ESPN feeds and logos (render_games.sh -> design/mini_stage2.png; get_feeds.py refreshes feeds/ and logos/) and the real setup page (page_host.sh ->
   out/setup.html and phone-sized pictures). Needs libsdl2-dev and LovyanGFX.
 
 Build:
@@ -28,6 +28,7 @@ Layout (mini/):
 - mn_lcd: screen + touch driver (ST7796S/U, XPT2046), colour modes, fonts.
 - mn_touch: taps, first-start touch setup.
 - mn_picker: picking teams on the screen (EDIT on the home screen).
+- mn_net: background task that keeps each favourite's game fresh from ESPN (mn_espn parses the feed, mn_game is the data). mn_logo: ESPN logos kept in the little filesystem and drawn from there. mn_play: the home tile and game screen. mn_tls: one download at a time.
 - mn_ui: the screens. mn_portal: setup page / mini.local (plus /log and
   /screen, a picture of the screen). mn_ota: updates from GitHub releases.
 - mn_settings, mn_teams (copied from Scoreboard's sb_teams.h), mn_dns

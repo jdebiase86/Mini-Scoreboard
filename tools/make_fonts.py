@@ -20,15 +20,16 @@ WANT = [
     ("S13", "Inter-SemiBold.otf", 13),
     ("M12", "Inter-Medium.otf", 12),
     ("M15", "Inter-Medium.otf", 15),
+    ("B62", "Inter-Bold.otf", 62, "0123456789- "),   # the big scores: digits only
 ]
 CHARS = [chr(c) for c in range(32, 127)]
 
 
-def vlw(path, size):
+def vlw(path, size, chars=None):
     f = ImageFont.truetype(path, size)
     ascent, descent = f.getmetrics()
     glyphs, bitmaps = [], []
-    for ch in CHARS:
+    for ch in sorted(set(chars or CHARS)):   # the loader looks glyphs up in sorted order
         adv = round(f.getlength(ch))
         pad = size
         im = Image.new("L", (size * 3, size * 3), 0)
@@ -56,8 +57,8 @@ def main():
     lines = ["// Made by tools/make_fonts.py from Inter (SIL Open Font License). Don't edit by hand.",
              "#pragma once", "#include <stdint.h>", ""]
     total = 0
-    for name, file, size in WANT:
-        data = vlw(os.path.join(FONTS, file), size)
+    for name, file, size, *extra in WANT:
+        data = vlw(os.path.join(FONTS, file), size, extra[0] if extra else None)
         total += len(data)
         lines.append(f"// {file} {size} px")
         lines.append(f"static const uint8_t FONT_{name}[{len(data)}] = {{")

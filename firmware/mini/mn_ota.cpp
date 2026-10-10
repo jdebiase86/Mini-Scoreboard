@@ -2,6 +2,7 @@
 #include "mn_ota.h"
 #include "mn_version.h"
 #include "mn_log.h"
+#include "mn_tls.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -246,7 +247,10 @@ static void otaTask(void*) {
       bootCheckAt = 0;
       if (nightly) checkedDay = lt.tm_yday;
       mnLog("checking for updates (heap %u KB)", (unsigned)(ESP.getFreeHeap() / 1024));
-      otaCheck(asked);
+      if (mnTlsTake(60000)) {   // scores and logos take turns with downloads
+        otaCheck(asked);
+        mnTlsGive();
+      }
     }
   }
 }
