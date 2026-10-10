@@ -530,6 +530,13 @@ once from each side (PUNT-ASTIC for one, NO PUNT INTENDED for the other); fix by
 Memory: the biggest free piece fell from 63 KB (0.10) to 57 KB at rest (dips to 37 KB while fetching): give some back (trim static
 buffers) in the next update.
 
+More from Joe (Oct 11): (1) the blacks in the animations are not all the same black: the stage colours I used (4,6,12), (6,6,10),
+(8,14,40) are slightly blue next to the pure black of the word plates, so the plates show as squares. Fix: one black for the stage and
+the plates (or draw plates in the stage colour). (2) The punt banner showed the other team's letters ("ARK") in the favourite's colours:
+Arkansas is not a favourite, so its logo is not stored; fetch the opposing team's logo (76 px) once its game goes live, and use letters
+only until it arrives. (3) Memory: give back some without losing anything (log ring 60 x 120 B = 7 KB, the spark / queue / about
+buffers, the games' statics; target the biggest free block back to 63 KB).
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
