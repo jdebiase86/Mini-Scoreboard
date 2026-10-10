@@ -545,6 +545,13 @@ game list, GAME_SIMON name). (4) Basket Toss icon: the flyer pokes out above the
 
 (5) Heads and tails: make the coin look like a real quarter (silver rim with reeding, an eagle-style head side and a tails side, shine, spinning edge-on as it flips); picture first.
 
+(6) Logo Match: bigger boards after level 8 (8, 10, 12 pairs; 24 cards = 6 x 4, ~70 px tiles); mix plain symbols in with the logos so the
+board fills faster; picture of the 24-card board first.
+(7) Alerts while playing a game: today animations only play on HOME/TEAM/DETAIL/TICKER/ABOUT (mini.ino ~line 479), and netWatch is not
+called in the games, so live games are polled slowly and events go stale (45 s). Idea: a small banner slides in at the top of the game
+screen for ~4 s (team logo, short words like "TOUCHDOWN - Team"), game keeps running, tap to dismiss; the big animation is skipped
+inside games; watch live favourites while a game is open (pause-safe: games with a timer should not be punished). Picture first.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
