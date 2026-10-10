@@ -277,3 +277,24 @@ Small notes
 design/device_renders.png (Oct 7): the deeper buttons case with the mock-up
 screens on it - on a desk stand (orange stand is a placeholder, not designed
 yet) and lying flat. Drawn by case/scene.py.
+
+
+## Ideas for next (Oct 10, from Joe's first day with 0.5 / 0.6; nothing coded)
+- Dim screen: a little dimmer than now (it is still quite readable).
+- HOME button: smaller, like EDIT, and moved up into the top bar of the game
+  screen (next to the TV network / battery), freeing the bottom of the screen.
+- Game screen layout idea: shift everything down; the last-play ticker comes in
+  at the top of the screen; logos, score and quarter in the middle; the field
+  (or the score-by-period area) at the bottom. Or keep the layout and give the
+  last-play card more room. Draw both as pictures first and let Joe pick.
+- Ticker mode: pick a sport, and the screen rotates through that sport's live
+  games (like AUTO but for one sport).
+- AUTO mode: change game every 15 s instead of 20 s.
+- Battery: sitting at 92% on the charger for a long time may just be full (the
+  ADC reads a bit low near 4.2 V); check the minute-by-minute millivolts in
+  mini.local/log from 0.6 on, and if needed add a small calibration offset
+  (measure the battery plug with a multimeter once).
+- Memory: after a score download the biggest free block is only about 71 KB,
+  but compressed downloads were only asked for with more than 110 KB, so they
+  never switched on. Reserve the 44 KB before connecting (and retry plain if
+  the connection then fails), and never read the big game page uncompressed.
