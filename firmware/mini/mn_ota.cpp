@@ -52,7 +52,8 @@ static void otaNote(const char* fmt, const char* a = "", const char* b = "") {
   if (now > 1700000000) {
     struct tm lt;
     localtime_r(&now, &lt);
-    strftime(when, sizeof(when), "%-I:%M %p", &lt);
+    int h = lt.tm_hour % 12;   // no "%-I" in the board's strftime
+    snprintf(when, sizeof(when), "%d:%02d %s", h ? h : 12, lt.tm_min, lt.tm_hour < 12 ? "AM" : "PM");
   }
   char msg[80];
   snprintf(msg, sizeof(msg), fmt, a, b);

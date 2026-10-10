@@ -170,8 +170,12 @@ void uiHomeClock(bool force) {
   localtime_r(&now, &lt);
   if (!force && lt.tm_min == lastMinute) return;
   lastMinute = lt.tm_min;
+  // "Fri 7:42 PM" (the board's strftime has no "%-I" for an hour without
+  // its leading zero, so the hour is put in by hand)
+  static const char* const DAYS[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   char s[24];
-  strftime(s, sizeof(s), "%a %-I:%M %p", &lt);
+  int h = lt.tm_hour % 12;
+  snprintf(s, sizeof(s), "%s %d:%02d %s", DAYS[lt.tm_wday % 7], h ? h : 12, lt.tm_min, lt.tm_hour < 12 ? "AM" : "PM");
   lcd.fillRect(150, 4, 136, 26, C_BG);
   text(F_S13, s, 218, 16, C_GREY, C_BG, middle_center);
 }
