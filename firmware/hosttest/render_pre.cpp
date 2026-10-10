@@ -15,8 +15,12 @@
 #include "../mini/mn_wifi.h"
 #include "../mini/mn_battery.h"
 #include "../mini/mn_live.h"
+#include "../mini/mn_version.h"
+#include "../mini/mn_about.h"
+#include "../mini/mn_diag.h"
 #include <WiFi.h>
 #include <stdio.h>
+#include <math.h>
 
 Settings settings;
 time_t mnNow;
@@ -101,6 +105,27 @@ static LiveInfo liveFor(int pick, const char* league) {
 
 static void showDetail_unused() {}
 
+
+// pretend diagnostics, for the About page picture
+static BatSample fakeBat[DIAG_BAT_N];
+static int fakeBatN = 0;
+String diagRestartWhy() { return "Crash (a program error)"; }
+bool diagRestartBad() { return true; }
+uint32_t diagPrevRunSecs() { return 7500; }
+uint32_t diagBoots() { return 3; }
+static const char* const PREV[] = {
+  "14:03:16 scores: FLA ok in 1361 ms, heap 154 KB (biggest block 63 KB)",
+  "14:03:23 scores: FLA ok in 1698 ms, heap 154 KB (biggest block 63 KB)",
+  "14:03:30 battery 3916 mV (49%, not charging)",
+  "14:03:33 sudoku: making a puzzle",
+  "(this is a made-up example)"};
+int diagPrevLineCount() { return 5; }
+const char* diagPrevLine(int i) { return PREV[i]; }
+int diagBatCount() { return fakeBatN; }
+BatSample diagBatAt(int i) { return fakeBat[i]; }
+void diagBegin() {} void diagTick() {} void diagNote(const char*) {} void diagLogLine(const char*) {}
+void diagBatSample(int, int, bool) {} String diagBatCsv() { return ""; }
+
 int main() {
   setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
   tzset();
@@ -126,5 +151,22 @@ int main() {
   playGame(settings.picks[dal], none, true, -1, PG_OPEN); save("p06_bye_week_football");
   playGame(settings.picks[mav], none, true, -1, PG_OPEN); save("p07_no_game_basketball");
   uiHome(0); save("p08_home_with_bye_tiles");
+  // About page
+  for (int i = 0; i < 288; i++) {
+    float t = i / 287.0f;
+    int mv = i < 200 ? (int)(4150 - 260 * t * 1.35f + 20 * sinf(i * 0.9f)) : (int)(3880 + (i - 200) * 2.4f);   // down all day, then on the charger
+    fakeBat[i] = BatSample{(uint32_t)(mnNow / 60 - (287 - i) * 5), (uint16_t)mv, (uint8_t)(i < 200 ? 90 - i * 0.3f : 40 + (i - 200) * 0.6f), (uint8_t)(i >= 200)};
+  }
+  fakeBatN = 288;
+  AboutData ad; ad.version = FW_VERSION; ad.ssid = "Phone hotspot"; ad.rssi = -63; ad.upSecs = 4 * 3600 + 1260; ad.freeKb = 154; ad.biggestKb = 63;
+  ad.mv = 3913; ad.pct = 64; ad.charging = false; ad.saver = true;
+  aboutOpen(ad); save("p09_about_status");
+  aboutTap(395, 16, ad); save("p10_about_before_restart");
+  aboutTap(30, 16, ad);
+  // the second page of favourites (the back button no longer covers the clock)
+  settings.setPicksFromString("NFL:DAL,NFL:JAX,CFB:IOWA,MLB:CLE,NHL:DET,NBA:DAL,NHL:SEA,NBA:HOU");
+  for (int i = 0; i < settings.npicks; i++) { fakeK[i] = true; lookup(settings.picks[i], fakeG[i]); fakeSide[i] = fakeG[i].mine(); }
+  uiHome(1); save("p11_home_page2");
+  online = false; uiHome(0); save("p12_home_no_wifi"); online = true;
   return 0;
 }

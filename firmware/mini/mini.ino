@@ -26,9 +26,11 @@
 #include "mn_battery.h"
 #include "mn_games.h"
 #include "mn_log.h"
+#include "mn_diag.h"
+#include "mn_about.h"
 #include "mn_version.h"
 
-enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER, M_GAMES, M_GAME };
+enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER, M_GAMES, M_GAME, M_ABOUT };
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
@@ -40,6 +42,7 @@ static const uint32_t AUTO_MS = 15000;
 static int tickerLeague = -1;   // AUTO rotates through this league's teams only (-1 = all my teams)
 static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
 static Mode wifiFrom = M_HOME;       // M_WIFI: where BACK goes
+static Mode aboutFrom = M_HOME;      // M_ABOUT: where BACK goes
 static DetailKind detKind = DK_TEAMS; // M_DETAIL: which card
 static uint32_t detSig = 0;
 static bool holdCardAfter = false;   // back from the last-play details: show that card again for a few seconds
@@ -90,6 +93,7 @@ static bool checkBootButton() {
       if (left <= 0) {
         uiMessage("Wi-Fi forgotten", "Restarting...", nullptr, C_YELLOW);
         settings.forgetWifi();
+        diagNote("BOOT held: Wi-Fi forgotten");
         delay(1500);
         ESP.restart();
       }
@@ -132,6 +136,7 @@ static void updateNotice() {
 }
 
 void setup() {
+  diagBegin();
   Serial.begin(115200);
   delay(200);
   mnLog("Mini Scoreboard " FW_VERSION " starting");
@@ -182,7 +187,24 @@ static void closeDetail() {
   setMode(M_TEAM);
 }
 
+static AboutData aboutData() {
+  AboutData d;
+  d.version = FW_VERSION;
+  d.ssid = WiFi.SSID();
+  d.rssi = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  d.upSecs = millis() / 1000;
+  d.freeKb = ESP.getFreeHeap() / 1024;
+  d.biggestKb = ESP.getMaxAllocHeap() / 1024;
+  d.pct = batPresent() ? batPercent() : -1;
+  d.mv = batMilliVolts();
+  d.charging = batCharging();
+  d.saver = netSaverOn();
+  return d;
+}
+
 static void handleTap(int x, int y) {
+  // the battery at the top right of the home and game screens opens the About page
+  if ((mode == M_HOME || mode == M_TEAM) && x >= 392 && y < 34) { aboutFrom = mode; setMode(M_ABOUT); return; }
   switch (mode) {
     case M_HOME: {
       int hit = uiHomeHit(homePage, x, y);
@@ -234,6 +256,9 @@ static void handleTap(int x, int y) {
     }
     case M_WIFI:
       if (wifiTap(x, y) == WR_BACK) setMode(wifiFrom);
+      break;
+    case M_ABOUT:
+      if (aboutTap(x, y, aboutData())) { if (aboutFrom == M_TEAM) autoAt = millis() + AUTO_MS; setMode(aboutFrom); }
       break;
     case M_GAMES: {
       GamesResult r = gamesMenuTap(x, y);
@@ -346,6 +371,7 @@ static void watchdog() {
   chk = millis();
   if (netMemWaitSecs() > 90 && millis() > 120000) {   // no memory for a download for a minute and a half: a restart clears it
     mnLog("watchdog: no memory for downloads for %u s - restarting", (unsigned)netMemWaitSecs());
+    diagNote("no memory for downloads");
     delay(300);
     ESP.restart();
   }
@@ -363,6 +389,7 @@ static void watchdog() {
   }
   if (worst > 420 && worst < 65535) {
     mnLog("watchdog: no live update for %u s - restarting", (unsigned)worst);
+    diagNote("no live update for 7 minutes");
     delay(300);
     ESP.restart();
   }
@@ -370,7 +397,14 @@ static void watchdog() {
 
 // Carried somewhere else: with several remembered networks, look for one that's here
 static void roam() {
-  static uint32_t offlineSince = 0, lastTry2 = 0;
+  static uint32_t offlineSince = 0, lastTry2 = 0, lastKick = 0;
+  // one network only (a phone hotspot that went to sleep, say): ask again every minute
+  if (settings.nnets == 1 && mode != M_SETUP && mode != M_CONNECTING && mode != M_FALLBACK && mode != M_WIFI && !wifiBusy() &&
+      WiFi.status() != WL_CONNECTED && millis() > 60000 && millis() - lastKick > 60000) {
+    lastKick = millis();
+    mnLog("Wi-Fi is gone: asking again");
+    WiFi.reconnect();
+  }
   if (settings.nnets < 2 || wifiBusy() || mode == M_SETUP || mode == M_CONNECTING || mode == M_FALLBACK || mode == M_WIFI) return;
   if (WiFi.status() == WL_CONNECTED) { offlineSince = 0; return; }
   if (!offlineSince) offlineSince = millis();
@@ -391,6 +425,7 @@ void loop() {
   if (portalRestart && millis() - portalSavedAt > 2500) {
     lcdBrightness(level());
     uiMessage("Saved", "Restarting...", nullptr, C_GREEN);
+    diagNote("settings saved on the setup page");
     delay(800);
     ESP.restart();
   }
@@ -421,9 +456,22 @@ void loop() {
     lcdBrightness(level());   // wake as soon as the finger lands; the tap itself is swallowed
   }
   batPoll();
+  diagTick();
+  // a low battery: said once, then not again until it has been charged
+  {
+    static bool lowWarned = false;
+    int pct = batPresent() ? batPercent() : -1;
+    if (pct < 0 || batCharging() || pct > 20) lowWarned = false;
+    else if (pct <= 15 && !lowWarned && (mode == M_HOME || mode == M_TEAM) && !dimmed) {
+      lowWarned = true;
+      uiMessage("Battery low", (String(pct) + "% left").c_str(), "Plug me in soon", C_YELLOW);
+      delay(2500);
+      dirty = true;
+    }
+  }
   roam();
   watchdog();
-  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || mode == M_TICKER || (mode == M_WIFI && !wifiBusy());
+  bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || mode == M_TICKER || mode == M_ABOUT || (mode == M_WIFI && !wifiBusy());
   bool mayDim = settings.dimMode == 1 || (settings.dimMode == 0 && !batCharging() && !(batPresent() && batMilliVolts() >= 4150));
   if (!mayDim && dimmed) { lcdBrightness(level()); dimmed = false; }   // plugged in: wake up
   if (idleScreen && mayDim && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
@@ -532,6 +580,13 @@ void loop() {
     case M_WIFI:
       wifiLoop();
       break;
+
+    case M_ABOUT: {
+      static uint32_t aboutAt = 0;
+      if (dirty) { aboutOpen(aboutData()); dirty = false; aboutAt = millis(); }
+      else if (millis() - aboutAt > 5000) { aboutRefresh(aboutData()); aboutAt = millis(); }
+      break;
+    }
 
     case M_GAMES:
       break;

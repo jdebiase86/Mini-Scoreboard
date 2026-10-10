@@ -14,6 +14,11 @@ String espnUrl(League l, int group, const char* day) {
   return u;
 }
 
+// ESPN's own page for one team (20-36 KB): its id, colour, name and logo files. Works with the short code.
+String espnTeamUrl(League l, const char* abbr) {
+  return String("https://site.api.espn.com/apis/site/v2/sports/") + PATHS[l] + "/teams/" + abbr;
+}
+
 String espnSummaryUrl(League l, const char* id) {
   return String("https://site.api.espn.com/apis/site/v2/sports/") + PATHS[l] + "/summary?event=" + id;
 }
@@ -30,6 +35,36 @@ bool Game::same(const Game& o) const {
 
 template <size_t N> static void scopy(char (&dst)[N], const char* src) {
   foldUtf8(src ? src : "", dst, N);   // the screen fonts only have plain letters: "Jokic", not "Jokić"
+}
+
+bool espnLoadTeam(ByteSource& src, TeamSide& out) {
+  JsonDocument filter;
+  filter["team"]["id"] = true;
+  filter["team"]["abbreviation"] = true;
+  filter["team"]["displayName"] = true;
+  filter["team"]["shortDisplayName"] = true;
+  filter["team"]["color"] = true;
+  filter["team"]["logos"][0]["href"] = true;
+  JsonDocument doc;
+  DeserializationError e = deserializeJson(doc, src, DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(12));
+  if (e) return false;
+  JsonObjectConst t = doc["team"];
+  out = TeamSide();
+  scopy(out.abbr, t["abbreviation"] | "");
+  scopy(out.name, t["shortDisplayName"] | (const char*)(t["displayName"] | ""));
+  scopy(out.id, t["id"] | "");
+  out.color = (uint32_t)strtoul(t["color"] | "0", nullptr, 16);
+  // the dark-background logo when there is one, else the first
+  const char* pick = nullptr;
+  for (JsonObjectConst l : t["logos"].as<JsonArrayConst>()) {
+    const char* h = l["href"] | "";
+    if (!strstr(h, "/i/teamlogos/")) continue;
+    if (strstr(h, "/500-dark/") && !strstr(h, "/scoreboard/")) { pick = h; break; }
+    if (!pick) pick = h;
+  }
+  const char* p = pick ? strstr(pick, "/i/teamlogos/") : nullptr;
+  scopy(out.logo, p ? p : "");
+  return out.logo[0] != 0;
 }
 
 bool espnLoad(ByteSource& src, JsonDocument& doc, bool rich) {

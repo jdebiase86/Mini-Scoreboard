@@ -2,6 +2,7 @@
 #include "mn_ota.h"
 #include "mn_version.h"
 #include "mn_log.h"
+#include "mn_diag.h"
 #include "mn_tls.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -150,6 +151,7 @@ static bool otaInstall(String url, const char* version, long apiSize) {
     otaNote("installed %s, restarting", version);
     otaPercent = 100;
     delay(1500);
+    diagNote("installed an update");
     ESP.restart();
     return true;
   }

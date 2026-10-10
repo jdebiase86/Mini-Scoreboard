@@ -13,7 +13,7 @@ for c in adler32 crc32 infback inffast inflate inftrees zutil; do
 done
 g++ -std=gnu++17 -O1 -w -DMN_HOST -D__LINUX__ -I shim -I "$LGFX/src" -I "$LIB/ArduinoJson/src" -I "$P" \
   render_pre.cpp ../mini/mn_ui.cpp ../mini/mn_play.cpp ../mini/mn_logo.cpp ../mini/mn_espn.cpp ../mini/mn_jscan.cpp ../mini/mn_live.cpp ../mini/mn_lcd.cpp \
-  ../mini/mn_detail.cpp ../mini/mn_keyboard.cpp ../mini/mn_wifi.cpp ../mini/mn_battery.cpp \
+  ../mini/mn_detail.cpp ../mini/mn_keyboard.cpp ../mini/mn_wifi.cpp ../mini/mn_battery.cpp ../mini/mn_about.cpp \
   settings_host.cpp "$P/PNGdec.cpp" out/z_*.o \
   $(find "$LGFX/src/lgfx/v1" -maxdepth 1 -name '*.cpp') \
   $(find "$LGFX/src/lgfx/v1/misc" "$LGFX/src/lgfx/v1/panel" "$LGFX/src/lgfx/v1/platforms/sdl" -name '*.cpp') \

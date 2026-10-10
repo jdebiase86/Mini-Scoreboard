@@ -255,6 +255,27 @@ static bool fetchFeed(const String& url, JsonDocument& doc, bool rich) {
   return fetchStream(url, readFeed, &c);
 }
 
+// A favourite with no game (a bye week, out of season) and no remembered logo yet: ESPN's page for the team
+// gives its logo, colour and name. Tried once, again in ten minutes if it didn't work.
+static uint32_t teamTryAt[MAX_PICKS];
+static bool readTeam(ByteSource& src, void* c) { return espnLoadTeam(src, *(TeamSide*)c); }
+static bool teamStep() {
+  for (int i = 0; i < MAX_PICKS; i++) {
+    if (slots[i].team < 0 || !slots[i].known || slots[i].g.state != GS_NONE) continue;
+    if ((int32_t)(millis() - teamTryAt[i]) < 0) continue;
+    teamTryAt[i] = millis() + 600000UL;
+    TeamSide have;
+    if (netTeamSide(i, have)) continue;
+    if (ESP.getMaxAllocHeap() < MIN_BLOCK) { teamTryAt[i] = millis() + 20000UL; return false; }
+    TeamSide got;
+    bool ok = fetchStream(espnTeamUrl(TEAMS[slots[i].team].league, TEAMS[slots[i].team].abbr), readTeam, &got);
+    mnLog("team page %s: %s", TEAMS[slots[i].team].abbr, ok ? "ok" : "failed");
+    if (ok) { rememberTeam(i, got); portENTER_CRITICAL(&mux); version++; portEXIT_CRITICAL(&mux); }
+    return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------- the live page of one game
 // While a details card is open the mini also reads the game's own page for the
 // team stats, leaders so far and the last play (mn_live). One game at a time.
@@ -318,16 +339,25 @@ static bool liveStep() {
 //   the last 10 minutes before the start: every 30 seconds
 //   a game that just ended: every 10 minutes for a few hours (a late correction)
 //   otherwise: every hour, and early enough to be watching 10 minutes before a start
+// Data saver: on a phone hotspot (an iPhone's is always 172.20.10.x, an Android's often 192.168.43.x), or if asked for
+bool netSaverOn() {
+  if (settings.saver == 1) return true;
+  if (settings.saver == 2 || WiFi.status() != WL_CONNECTED) return false;
+  IPAddress gw = WiFi.gatewayIP();
+  return (gw[0] == 172 && gw[1] == 20 && gw[2] == 10) || (gw[0] == 192 && gw[1] == 168 && gw[2] == 43);
+}
+
 static uint32_t interval(const Game& g, time_t now) {
   const uint32_t HOUR = 3600000UL;
-  if (g.state == GS_LIVE) return 5000;
+  const bool saver = netSaverOn();
+  if (g.state == GS_LIVE) return saver ? 8000 : 5000;
   if (g.state == GS_PRE) {
     long toStart = (long)(g.start - now);
-    if (toStart <= 600) return 30000;   // includes a start that ESPN hasn't called "live" yet
+    if (toStart <= 600) return saver ? 60000 : 30000;   // includes a start that ESPN hasn't called "live" yet
     uint32_t wait = (uint32_t)(toStart - 600) * 1000UL;
     return wait < HOUR ? wait : HOUR;
   }
-  if (g.state == GS_POST) return (now - g.start) < 5 * 3600 ? 10 * 60000UL : HOUR;
+  if (g.state == GS_POST) return (now - g.start) < 5 * 3600 ? (saver ? 30 : 10) * 60000UL : HOUR;
   return HOUR;
 }
 
@@ -341,6 +371,7 @@ static void netTask(void*) {
     if (logoRun < 2 && logoFetchOne()) { logoRun++; delay(200); continue; }
     logoRun = 0;
     if (liveStep()) { delay(100); continue; }
+    if (teamStep()) { delay(100); continue; }
 
     // the favourite that's most overdue
     uint32_t ms = millis();

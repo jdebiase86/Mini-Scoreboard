@@ -16,6 +16,7 @@ int batPercentFor(int mv) {
 
 #ifndef MN_HOST
 #include "mn_log.h"
+#include "mn_diag.h"
 static const int RING = 30;              // five minutes of readings, one every 10 seconds
 static int ring[RING];
 static int nring = 0, smooth = 0;
@@ -75,6 +76,11 @@ void batPoll() {
     else if (slope <= -4 && smooth < 4150) charging = false;
   }
   if (smooth >= 4170) charging = true;
+  static uint32_t sampledAt = 0;
+  if (!sampledAt || ms - sampledAt >= 300000UL) {   // the battery's day, for the About page and /battery
+    sampledAt = ms | 1;
+    diagBatSample(smooth, batPercent(), charging);
+  }
   if (ms - loggedAt > 60000) {         // for tuning on a real board: see mini.local/log
     loggedAt = ms;
     mnLog("battery %d mV (%d%%, %s)", smooth, batPercent(), charging ? "charging" : "not charging");

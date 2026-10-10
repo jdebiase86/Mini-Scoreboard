@@ -16,6 +16,10 @@ struct ByteSource {
 // day: "YYYYMMDD" for another day (MLB, NHL, NBA), or nullptr for today / this week.
 String espnUrl(League l, int group, const char* day);
 
+// A team's own page (logo, colour, name): for a favourite with no game to take them from
+String espnTeamUrl(League l, const char* abbr);
+bool espnLoadTeam(ByteSource& src, TeamSide& out);
+
 // The per-game page (team stats, leaders so far, plays): big, so read it with mn_live
 String espnSummaryUrl(League l, const char* id);
 

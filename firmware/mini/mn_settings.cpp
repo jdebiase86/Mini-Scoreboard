@@ -76,6 +76,8 @@ void Settings::load() {
   if (bright < 0 || bright >= NBRIGHT) bright = 2;
   flip = p.getBool("flip", false);
   dimMode = p.getInt("dim", 0);
+  saver = p.getInt("saver", 0);
+  if (saver < 0 || saver > 2) saver = 0;
   if (dimMode < 0 || dimMode > 2) dimMode = 0;
   colour = p.getInt("colour", 0) & 3;
   hasCal = p.getBytes("tcal", tcal, sizeof(tcal)) == sizeof(tcal);
@@ -95,6 +97,7 @@ void Settings::save() {
   p.putInt("bright", bright);
   p.putBool("flip", flip);
   p.putInt("dim", dimMode);
+  p.putInt("saver", saver);
   p.putInt("colour", colour);
   p.end();
 }

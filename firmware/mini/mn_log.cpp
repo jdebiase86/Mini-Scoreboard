@@ -1,4 +1,5 @@
 #include "mn_log.h"
+#include "mn_diag.h"
 #include <stdarg.h>
 
 static const int LINES = 60, LEN = 120;   // ~7 KB: no PSRAM on this board
@@ -24,6 +25,7 @@ void mnLog(const char* fmt, ...) {
   Serial.println(line);
   portENTER_CRITICAL(&mux);
   memcpy(ring[head], line, LEN);
+  diagLogLine(line);
   head = (head + 1) % LINES;
   if (count < LINES) count++;
   portEXIT_CRITICAL(&mux);

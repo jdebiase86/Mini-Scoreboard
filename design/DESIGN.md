@@ -428,11 +428,39 @@ Found on the board right after 0.10 (Joe, Oct 10; to fix next, nothing coded yet
 - GAME DETAILS button does nothing: taps below y 246 count as "no hit" on the game screen; make the button's
   area (and the bottom of an upcoming game screen) open the details card.
 - More-teams page: the MY TEAMS back button overhangs the clock and clips it; narrow the button or move the clock.
-- The Rangers' logo (a game on Sunday) was still letters: ask for the log (look for "logo ... no room" lines).
+- One favourite's logo (it had a game on Sunday) was still letters: ask for the log (look for "logo ... no room" lines).
 
 Still to do: battery calibration (needs Joe's overnight and plug-in logs),
 animations (touchdown burst etc., design/mini_mockups.png no. 5), more games
 (Breakout, Whack-a-mole, football drill ...), sound.
+
+## v0.11 (Oct 11, not yet tried on the board)
+From Joe's first day with 0.10 and the plan for his event day:
+- Bye week / out of season: a favourite with no game and no remembered logo reads ESPN's own page for the team once
+  (site.api.espn.com/apis/site/v2/sports/<sport>/<league>/teams/<abbr>, works with the short code) and keeps the logo path,
+  colour and name in flash. Football in September to January: BYE WEEK (logo, big yellow words); otherwise "Off season"
+  in grey under the logo. (hosttest/test_team.cpp checks the page reader with real pages: feeds/team_*.json.)
+- GAME DETAILS button works (taps below y 246 on an upcoming game open the card); the MY TEAMS back button on the
+  second home page is narrower and the clock moved over, so it no longer clips the time.
+- Data saver (setup page: Automatic / Always / Never): automatic on an iPhone hotspot (gateway 172.20.10.x) or the usual
+  Android one (192.168.43.x). Live games every 8 s instead of 5, last ten minutes before a start every 60 s, a game that
+  just ended every 30 min, at most eight logo downloads per ten minutes.
+- No Wi-Fi: "Waiting for Wi-Fi..." where the clock is; with one saved network it asks again every minute.
+- Low battery: a message once at 15 % (again only after a charge).
+- About page (tap the battery at the top right of the home or a game screen): version and run time, why it last
+  restarted (power, crash, stuck / watchdog, or on purpose with the reason) and how long that run lasted, Wi-Fi name and
+  strength, free memory and biggest block, battery and the data saver, then the battery's last 24 hours as a graph. BEFORE
+  RESTART shows the last ten log lines of the run before. The reason and lines live in the chip's RTC memory
+  (RTC_NOINIT_ATTR, mn_diag.*): they survive crashes and watchdog restarts, not a power cut.
+- Battery history: voltage, percent and the charging guess every five minutes for 24 hours (288 x 8 bytes), in RTC memory and
+  saved to flash (namespace "diag") once an hour; http://mini.local/battery gives it as a table (CSV) to copy.
+- Games: Basket Toss (page 2 of the games): slide the bases under the flyer; 3 lives, a spare life every 10 catches, level up
+  every 5 catches (faster and wider tosses, narrower arms, wind from level 4, no landing ring after level 3).
+  Pictures: design/mini_basket.png. It is the plain cheer look only (no school logo or colours; nothing personal in the repo).
+- Pictures of the new screens: design/mini_stage6.png (0.10) and design/mini_stage7.png (0.11).
+Next: score alerts, idle clock, what's new screen, next five games, friends mode, the two-player games (Connect Four for two,
+dots and boxes, checkers, air hockey, tap duels, with "Who's playing?" names and a tally per pair); battery calibration once
+the history has a full charge and a plug-in.
 
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under

@@ -25,6 +25,9 @@ class String : public std::string {
   String(const char* s) : std::string(s ? s : "") {}
   String(const std::string& s) : std::string(s) {}
   String(int v) : std::string(std::to_string(v)) {}
+  String(unsigned int v) : std::string(std::to_string(v)) {}
+  String(long v) : std::string(std::to_string(v)) {}
+  String(unsigned long v) : std::string(std::to_string(v)) {}
   String(char c) : std::string(1, c) {}
   unsigned length() const { return size(); }
   String substring(int a, int b = -1) const {
