@@ -50,10 +50,11 @@ Draft 4 (Oct 10): build_case.py builds the whole case from the designer's
 for a 25 x 35 mm speaker at the left end with a grille in the floor, battery
 pocket moved to x = 71.5, the M3 heat-set insert holes (4.5 mm wide, 4.7 mm deep,
 as the designer drew them) with the rest of each hole filled so an insert can't
-sink, and an optional stylus tube drawn from scratch along the top long side, away
-from any stand (bar 8 x 9 mm, bore narrowing from 4.4 mm at the open right end
-to 3.9 mm at the closed left end so the stylus wedges tight, a 2.6 mm push-out
-hole at the left). build_case.py writes base_plain.stl and base_final.stl (with tube). The stylus width comes from another design's groove
-(4.2 mm); none of its shape is used. Closed case about 24 mm thick, 79.2 mm wide
-with the tube. Print: base floor-down, lid face-down (flipped), PLA.
+sink, and an optional stylus holder drawn from scratch on the top long side, away
+from any stand: a half-round groove in the wall (3.9 mm wide at the left end,
+4.4 mm at the right, so the stylus wedges tight as it is pushed in) and three
+small 8 mm loops (4.2 mm proud, 45-degree undersides, no supports); the stylus
+shows at both ends. build_case.py writes base_plain.stl and base_final.stl (with the stylus loops). The stylus width comes from another design's groove
+(4.2 mm); none of its shape is used. Closed case about 24 mm thick, 75.3 mm wide
+with the loops. Print: base floor-down, lid face-down (flipped), PLA.
     python3 build_case.py <buttons base.stl> <lid.stl> <out folder>

@@ -30,18 +30,23 @@ for hx, hy in ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6)):
     plug.apply_translation([hx, hy, (-7.2 + BOT + 0.5) / 2])
     acc = acc + M(plug)
 plain = acc
-# 2. stylus tube on the top (y = 66.15) long side, so a stand under or behind the case never touches it:
-#    8 x 9 mm bar, a bore that narrows from 4.4 mm at the open right end to 3.9 mm at the closed
-#    left end (the stylus wedges tight as it goes in), a 2.6 mm hole at the left to push it out
-RY0, RY1, RZ0, RZ1 = 66.15 - 0.6, 66.15 + 8.0, BOT + 2.6, BOT + 11.6
-bar = trimesh.creation.box(extents=[121.1, RY1 - RY0, RZ1 - RZ0]); bar.apply_translation([55.55, (RY0 + RY1) / 2, (RZ0 + RZ1) / 2])
-rzc, ryc = (RZ0 + RZ1) / 2, 66.15 + 4.0
+# 2. stylus holder on the top (y = 66.15) long side, away from any stand: the stylus lies in a half-round
+#    groove cut into the wall (3.9 mm wide at the left end, 4.4 mm at the right, so it wedges tight as it is
+#    pushed in) and three small loops hold it in. Each loop sticks out only 4.2 mm and has 45-degree
+#    undersides, so it prints without supports. The stylus shows at both ends.
+YW, ZC0 = 66.15, BOT / 2 + 0.0        # wall face, mid-depth of the base
 def ring(x, r):
     t = np.linspace(0, 2 * np.pi, 48, endpoint=False)
-    return np.c_[np.full_like(t, x), ryc + r * np.cos(t), rzc + r * np.sin(t)]
-bore = trimesh.convex.convex_hull(np.vstack([ring(-3.0, 1.95), ring(116.2, 2.2)]))
-push = trimesh.creation.cylinder(radius=1.3, height=6, sections=24); push.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])); push.apply_translation([-4.0, ryc, rzc])
-with_tube = plain + M(bar) - M(bore) - M(push)
+    return np.c_[np.full_like(t, x), YW + r * np.cos(t), ZC0 + r * np.sin(t)]
+bore = trimesh.convex.convex_hull(np.vstack([ring(-6.0, 1.95), ring(117.0, 2.2)]))
+loops = []
+for x0, x1 in ((16, 24), (58, 66), (100, 108)):
+    pts = np.array([(YW - 1.0, ZC0 - 7.2), (YW + 4.2, ZC0 - 2.0), (YW + 4.2, ZC0 + 2.0), (YW - 1.0, ZC0 + 7.2)])
+    verts = np.vstack([np.c_[np.full(4, x0), pts], np.c_[np.full(4, x1), pts]])
+    loops.append(trimesh.convex.convex_hull(verts))
+with_tube = plain
+for lp in loops: with_tube = with_tube + M(lp)
+with_tube = with_tube - M(bore)
 def tomesh(m):
     mm = m.to_mesh()
     return trimesh.Trimesh(mm.vert_properties[:, :3], mm.tri_verts)
@@ -64,7 +69,7 @@ pcb = trimesh.creation.box(extents=[110.6, 60.6, 1.61]); pcb.apply_translation([
 scr = trimesh.creation.box(extents=[94.6, 61.0, 2.9]); scr.apply_translation([55.55, 30.575, -0.1 + 1.45])
 def stylus(pull):
     s = trimesh.creation.cylinder(radius=2.0, height=95, sections=32); s.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))
-    s.apply_translation([116.1 - 47.5 + pull, ryc, rzc]); return s
+    s.apply_translation([116.1 - 47.5 + pull, YW, ZC0]); return s
 F = ImageFont.truetype("/usr/share/fonts/opentype/inter/Inter-Bold.otf", 22)
 def lab(im, t):
     c = Image.new("RGB", (im.width, im.height + 40), "white"); c.paste(im, (0, 40))
