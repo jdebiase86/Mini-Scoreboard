@@ -522,6 +522,14 @@ middle show as blocks taller than the 14 px bar (the text's background box is ta
 bar tall enough for the text (about 22 px) or draw the labels without a background box, so the bar is one even strip.
 Joe will run 0.13 through Sunday's NFL games and send more; nothing is being coded until he says.
 
+From Joe watching a college game (Oct 11): when the other team punted, the animation showed "ARK" letters instead of a logo and used the
+favourite team's colours (a mix-up). Possible causes to check: (1) both teams in a game are favourites, so the same play fires twice,
+once from each side (PUNT-ASTIC for one, NO PUNT INTENDED for the other); fix by playing one animation per play (key: game id + play id),
+(2) the logo only shows once its 112 px file is stored (letters until then), (3) wording: for "they punt" the banner shows OUR logo with
+"<them> HAVE TO PUNT". Ask Joe which words were on screen and whether the other team is also a favourite.
+Memory: the biggest free piece fell from 63 KB (0.10) to 57 KB at rest (dips to 37 KB while fetching): give some back (trim static
+buffers) in the next update.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
