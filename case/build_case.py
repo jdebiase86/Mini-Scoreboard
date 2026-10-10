@@ -23,12 +23,22 @@ subprocess.run([sys.executable, os.path.join(HERE, "deepen.py"), BASE, tmp, str(
 deep = trimesh.load(tmp)
 def M(m): return manifold3d.Manifold(manifold3d.Mesh(vert_properties=np.asarray(m.vertices, np.float32), tri_verts=np.asarray(m.faces, np.uint32)))
 BOT = -8.65 - H
+# Screw holes: measured on the real board (centre to centre 103.68 / 103.99 across, 53.36 / 53.54 up and down), so the
+# average of each pair is used about the old hole centre. The designer's holes (105.1 x 54.1 apart) are filled in.
+OLD = ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6))
+CX, CY, HX, HY = 55.05, 30.55, (103.68 + 103.99) / 4, (53.36 + 53.54) / 4
+HOLES = tuple((CX + sx * HX, CY + sy * HY) for sx in (-1, 1) for sy in (-1, 1))
 acc = M(deep)
 # 1. heat-set insert holes (M3, 4.5 mm wide) are only 4.7 mm deep: fill the rest of each hole so an insert can't sink
-for hx, hy in ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6)):
-    plug = trimesh.creation.cylinder(radius=2.5, height=(-7.2 - (BOT + 0.5)), sections=32)
-    plug.apply_translation([hx, hy, (-7.2 + BOT + 0.5) / 2])
+POST_TOP = -1.7
+for hx, hy in OLD:
+    plug = trimesh.creation.cylinder(radius=2.5, height=(POST_TOP - (BOT + 0.5)), sections=32)
+    plug.apply_translation([hx, hy, (POST_TOP + BOT + 0.5) / 2])
     acc = acc + M(plug)
+for hx, hy in HOLES:      # new holes: 4.5 mm wide, 5 mm deep, down from the top of the post
+    hole = trimesh.creation.cylinder(radius=2.25, height=5.0 + 0.2, sections=48)
+    hole.apply_translation([hx, hy, POST_TOP - 2.5 + 0.1])
+    acc = acc - M(hole)
 plain = acc
 # 2. stylus holder on the top (y = 66.15) long side, away from any stand: the stylus lies in a half-round
 #    groove cut into the wall (3.9 mm wide at the left end, 4.4 mm at the right, so it wedges tight as it is
@@ -53,7 +63,22 @@ def tomesh(m):
 base_plain = tomesh(plain); base = tomesh(with_tube)
 base_plain.export(os.path.join(OUT, "base_plain.stl"))
 base.export(os.path.join(OUT, "base_final.stl"))
-lid = trimesh.load(LID); lid.export(os.path.join(OUT, "lid.stl"))
+# lid: screw holes moved to the measured pattern, and the screen pocket made 1 mm deeper so the screen face sits flush
+lm = trimesh.load(LID); L = M(lm)
+def cyl(r, z0, z1, x, y):
+    c = trimesh.creation.cylinder(radius=r, height=z1 - z0, sections=48); c.apply_translation([x, y, (z0 + z1) / 2]); return M(c)
+POCKET_TOP, DEEPER = 3.0, 1.0
+for hx, hy in ((2.5, 3.5), (2.5, 57.65), (107.6, 3.5), (107.6, 57.65)):
+    L = L + cyl(2.85, 0.0, 5.2, hx, hy)
+for hx, hy in HOLES:
+    L = L + cyl(3.7, POCKET_TOP - 0.01, POCKET_TOP + DEEPER, hx, hy)     # keeps a wall between the screw head recess and the deeper pocket
+    L = L - cyl(1.75, -1.0, 6.0, hx, hy) - cyl(2.79, 3.3, 6.0, hx, hy)
+pocket = trimesh.creation.box(extents=[102.8 - 6.0, 61.2 - 0.0, DEEPER]); pocket.apply_translation([(6.0 + 102.8) / 2, 30.6, POCKET_TOP + DEEPER / 2])
+pk = M(pocket)
+for hx, hy in HOLES: pk = pk - cyl(3.7, POCKET_TOP - 1, POCKET_TOP + DEEPER + 1, hx, hy)
+L = L - pk
+for hx, hy in HOLES: L = L - cyl(1.75, -1.0, 6.0, hx, hy) - cyl(2.79, 3.3, 6.0, hx, hy)
+lid = tomesh(L); lid.export(os.path.join(OUT, "lid.stl"))
 print("base watertight", base.is_watertight, base_plain.is_watertight, "size", np.round(base.bounds[1] - base.bounds[0], 1).tolist())
 
 # ---- the picture
@@ -63,7 +88,7 @@ fz = -6.7 - H
 bat = trimesh.creation.box(extents=[67, 36, 10]); bat.apply_translation([BX, 30.575, fz + 5.5])
 spk = trimesh.creation.box(extents=[25, 35, 6.8]); spk.apply_translation([29.5, 30.575, fz + 0.4 + 3.4])
 ins = []
-for hx, hy in ((2.5, 3.5), (2.5, 57.6), (107.6, 3.5), (107.6, 57.6)):
+for hx, hy in HOLES:
     c = trimesh.creation.cylinder(radius=2.3, height=4.5, sections=24); c.apply_translation([hx, hy, -2.6 - 2.25 + 0.2]); ins.append((c, GOLD))
 pcb = trimesh.creation.box(extents=[110.6, 60.6, 1.61]); pcb.apply_translation([55.55, 30.575, -1.7 + 0.8])
 scr = trimesh.creation.box(extents=[94.6, 61.0, 2.9]); scr.apply_translation([55.55, 30.575, -0.1 + 1.45])
