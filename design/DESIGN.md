@@ -317,3 +317,14 @@ the game's own play list (the scoreboard feed's lastPlay lags during stoppages).
   but compressed downloads were only asked for with more than 110 KB, so they
   never switched on. Reserve the 44 KB before connecting (and retry plain if
   the connection then fails), and never read the big game page uncompressed.
+- Wi-Fi list paging: on the board the down arrow works but the up arrow does
+  not (the host picture program pages down and up fine with the same code), so
+  it is probably touch accuracy in the bottom-right corner: make both arrows
+  bigger and higher, and widen their hit zones. Swiping works as well.
+- Games page (idea, Oct 10): a GAMES tile as the last page after the favourites.
+  Small games that draw straight to the screen (no big buffers; the heap is
+  about 160 KB with a 70 KB biggest block): memory match with the team logos
+  already stored, snake, 2048, connect four against the board, sports trivia,
+  a penalty-kick or free-throw flick, a reaction test. With the stylus: a
+  drawing pad, minesweeper, sudoku, battleship. High scores kept in the board's
+  settings. Sounds when the speaker is in.

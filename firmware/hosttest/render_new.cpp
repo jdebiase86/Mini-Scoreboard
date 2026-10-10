@@ -234,6 +234,9 @@ int main() {
   fakeMs = 1000;
   WiFi.st = WL_DISCONNECTED;
   uiJoining("Phone hotspot"); save("w07_joining");
+  // paging: down, then up (Joe saw the up arrow not working)
+  WiFi.joined = "Home Wi-Fi";
+  wifiStart(); wifiLoop(); wifiTap(455, 302); save("w09_page2"); wifiTap(417, 302); save("w10_back_to_page1");
   // joined and saved at once, and the note after forgetting the one you're on
   settings.nets[0] = {"Home Wi-Fi", "x"}; settings.nets[1] = {"Phone hotspot", "x"}; settings.nnets = 2;
   WiFi.joined = "Phone hotspot"; WiFi.st = WL_CONNECTED;
