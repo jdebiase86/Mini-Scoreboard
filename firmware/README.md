@@ -30,6 +30,7 @@ Layout (mini/):
 - mn_picker: picking teams on the screen (EDIT on the home screen).
 - mn_net: background task that keeps each favourite's game fresh from ESPN (mn_espn parses the feed, mn_game is the data). mn_logo: ESPN logos kept in the little filesystem and drawn from there. mn_play: the home tile and game screen. mn_tls: one download at a time.
 - mn_wifi + mn_keyboard: the Wi-Fi list and the on-screen keyboard. mn_gzip: reads ESPN's compressed answer (the board's ROM inflate). mn_detail: the details cards. mn_jscan + mn_live: read the game's own page as it streams (live stats, leaders, last play). mn_battery: the battery reading.
+- mn_games + mn_g_*: the games page and the eleven games.
 - mn_ui: the screens. mn_portal: setup page / mini.local (plus /log and
   /screen, a picture of the screen). mn_ota: updates from GitHub releases.
 - mn_settings, mn_teams (copied from Scoreboard's sb_teams.h), mn_dns

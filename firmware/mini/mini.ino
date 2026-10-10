@@ -24,10 +24,11 @@
 #include "mn_wifi.h"
 #include "mn_detail.h"
 #include "mn_battery.h"
+#include "mn_games.h"
 #include "mn_log.h"
 #include "mn_version.h"
 
-enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER };
+enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER, M_GAMES, M_GAME };
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
@@ -193,6 +194,7 @@ static void handleTap(int x, int y) {
         dirty = false;
         return;
       }
+      if (hit == HIT_GAMES) { gamesMenu(); setMode(M_GAMES); dirty = false; return; }
       if (hit == HIT_WIFI) {
         wifiFrom = M_HOME;
         setMode(M_WIFI);
@@ -232,6 +234,15 @@ static void handleTap(int x, int y) {
     }
     case M_WIFI:
       if (wifiTap(x, y) == WR_BACK) setMode(wifiFrom);
+      break;
+    case M_GAMES: {
+      GamesResult r = gamesMenuTap(x, y);
+      if (r == GR_EXIT) { homePage = 0; setMode(M_HOME); }
+      else if (r == GR_OPENED) { mode = M_GAME; modeAt = millis(); dirty = false; }
+      break;
+    }
+    case M_GAME:
+      if (gamesTap(x, y)) { gamesMenu(); mode = M_GAMES; modeAt = millis(); dirty = false; }
       break;
     case M_TICKER: {
       int row = uiTickerHit(x, y);
@@ -298,6 +309,8 @@ static void handleSwipe(TouchEvent ev, int sx, int sy) {
       break;
     case M_TEAM: {
       if (playCardVisible() && sy >= 240) { playCardHide(); break; }   // swipe the last-play card away
+      // one more page after the last team: the games
+      if (ev == T_SWIPE_LEFT && !autoOn && shownPick == settings.npicks - 1) { gamesMenu(); setMode(M_GAMES); dirty = false; break; }
       if (settings.npicks < 2 || (ev != T_SWIPE_LEFT && ev != T_SWIPE_RIGHT)) break;
       shownPick = (shownPick + (ev == T_SWIPE_LEFT ? 1 : settings.npicks - 1)) % settings.npicks;
       autoAt = millis() + AUTO_MS;   // a swipe is a pick of your own: AUTO waits a full turn
@@ -309,6 +322,12 @@ static void handleSwipe(TouchEvent ev, int sx, int sy) {
       break;
     case M_WIFI:
       if (ev == T_SWIPE_UP || ev == T_SWIPE_DOWN) wifiSwipe(ev == T_SWIPE_UP);
+      break;
+    case M_GAMES:
+      gamesMenuSwipe(ev);
+      break;
+    case M_GAME:
+      gamesSwipe(ev);
       break;
     case M_DETAIL:
       detailTouched();
@@ -396,8 +415,8 @@ void loop() {
   TouchEvent ev = touchPoll(tx, ty);
   if (ev) {
     if (dimmed) { lcdBrightness(level()); dimmed = false; }
-    else if (ev == T_TAP) handleTap(tx, ty);
-    else handleSwipe(ev, tx, ty);
+    else if (ev == T_TAP) { if (mode == M_GAME) gamesGesture(touchGesture()); handleTap(tx, ty); }
+    else { if (mode == M_GAME) gamesGesture(touchGesture()); handleSwipe(ev, tx, ty); }
   } else if (touchDown() && dimmed) {
     lcdBrightness(level());   // wake as soon as the finger lands; the tap itself is swallowed
   }
@@ -405,7 +424,9 @@ void loop() {
   roam();
   watchdog();
   bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || mode == M_TICKER || (mode == M_WIFI && !wifiBusy());
-  if (idleScreen && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
+  bool mayDim = settings.dimMode == 1 || (settings.dimMode == 0 && !batCharging() && !(batPresent() && batMilliVolts() >= 4150));
+  if (!mayDim && dimmed) { lcdBrightness(level()); dimmed = false; }   // plugged in: wake up
+  if (idleScreen && mayDim && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
     lcdBrightness(max(5, level() / 12));
     dimmed = true;
   }
@@ -510,6 +531,13 @@ void loop() {
 
     case M_WIFI:
       wifiLoop();
+      break;
+
+    case M_GAMES:
+      break;
+
+    case M_GAME:
+      gamesLoop();
       break;
 
     case M_TICKER:

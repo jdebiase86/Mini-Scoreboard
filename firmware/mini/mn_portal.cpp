@@ -149,6 +149,8 @@ static void handleRoot() {
   static const char* const COL[] = {"1 (normal)", "2", "3", "4"};
   h += "<section><h2>Screen</h2><label class=f>Time zone (for game times)</label>" + sel("tz", settings.tz, tzl, NTZ);
   h += "<label class=f>Brightness</label>" + sel("bright", settings.bright, brl, NBRIGHT);
+  static const char* const DIMS[] = {"Dim when idle, but not while charging", "Always dim when idle", "Never dim"};
+  h += "<label class=f>When nobody touches the screen</label>" + sel("dim", settings.dimMode, DIMS, 3);
   h += String("<div class=row><input type=checkbox name=flip value=1 id=flip") + (settings.flip ? " checked" : "") +
        "><label for=flip>Screen upside down (USB-C plug on the other side)</label></div>";
   h += "<details><summary>Colour mode</summary><p class=hint>Only change this if the colours look wrong "
@@ -192,6 +194,7 @@ static void handleSave() {
   settings.setPicksFromString(teams);
   settings.tz = constrain(server.arg("tz").toInt(), 0, NTZ - 1);
   settings.bright = constrain(server.arg("bright").toInt(), 0, NBRIGHT - 1);
+  settings.dimMode = constrain(server.arg("dim").toInt(), 0, 2);
   bool flip = server.arg("flip") == "1";
   int colour = server.hasArg("colour") ? constrain(server.arg("colour").toInt(), 0, 3) : settings.colour;
   bool screenChanged = flip != settings.flip || colour != settings.colour;
