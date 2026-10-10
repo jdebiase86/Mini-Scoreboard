@@ -558,6 +558,8 @@ and then add the bigger boards as a ramp (more pairs with matching moves/seconds
 level counter (it adds 1 per win); level 1 -> 2 -> 3 change the board shape (6, 8, 12 cards) and level 4 adds a move limit, which can
 look like a jump. Ask which levels she saw; show a "Level N" banner before each deal to make it obvious.
 
+Joe's picks (Oct 11, from mini_next.png): alert banner A (small black bar, yellow outline); gold coin; 24-card tiles are big enough.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
