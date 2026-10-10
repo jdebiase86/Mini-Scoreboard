@@ -419,6 +419,17 @@ New:
   with no game shows its own logo with BYE WEEK (football) or NO GAME (other
   sports) on the home tile and the game screen.
 
+Found on the board right after 0.10 (Joe, Oct 10; to fix next, nothing coded yet):
+- A team on a bye week / out of season shows its letters, not its logo, until it has had a game since 0.10
+  (the logo is only remembered from a game seen). Fix: when a favourite has no remembered logo and no game,
+  read ESPN's own team page once (site.api.espn.com/apis/site/v2/sports/<sport>/<league>/teams/<abbr>, 20-36 KB,
+  works with the abbreviation; gives id, colour and logo paths), keep the logo path / colour / name in flash.
+  The out-of-season tile should show just the logo (no "none scheduled"): maybe "Off season" in grey.
+- GAME DETAILS button does nothing: taps below y 246 count as "no hit" on the game screen; make the button's
+  area (and the bottom of an upcoming game screen) open the details card.
+- More-teams page: the MY TEAMS back button overhangs the clock and clips it; narrow the button or move the clock.
+- The Rangers' logo (a game on Sunday) was still letters: ask for the log (look for "logo ... no room" lines).
+
 Still to do: battery calibration (needs Joe's overnight and plug-in logs),
 animations (touchdown burst etc., design/mini_mockups.png no. 5), more games
 (Breakout, Whack-a-mole, football drill ...), sound.
