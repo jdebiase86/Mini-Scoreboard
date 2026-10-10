@@ -517,6 +517,11 @@ Joe's photos of the real screen (Try the animations: field goal, three, win):
   towers, crowd, wall with a yellow line and foul poles, striped grass, the dirt diamond with bases and mound, chalk foul lines, the
   batter at the plate, the ball flying up over the wall.
 
+Another from Joe (Oct 11): the win chance bar on a live football game screen: the "45%" / "55%" labels at the ends and "WIN CHANCE" in the
+middle show as blocks taller than the 14 px bar (the text's background box is taller than the bar), so the bar looks lumpy. Fix: make the
+bar tall enough for the text (about 22 px) or draw the labels without a background box, so the bar is one even strip.
+Joe will run 0.13 through Sunday's NFL games and send more; nothing is being coded until he says.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
