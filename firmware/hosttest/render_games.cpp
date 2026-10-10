@@ -90,7 +90,7 @@ int main() {
   lcd.setColorDepth(16);
   lcd.createSprite(SCREEN_W, SCREEN_H);
 
-  const char* keys[] = {"NFL:NYG", "NHL:NYR", "CFB:LSU", "MLB:NYY", "NFL:DAL", "NBA:NY", "CFB:FLA"};
+  const char* keys[] = {"NFL:NYG", "NHL:NYR", "CFB:LSU", "MLB:NYY", "NFL:DAL", "NBA:NY", "CFB:FLA", "CFB:BYU"};
   String all;
   for (auto k : keys) { if (all.length()) all += ","; all += k; }
   settings.setPicksFromString(all);
@@ -98,11 +98,11 @@ int main() {
     fakeK[i] = true;
     lookup(settings.picks[i], fakeG[i]);
   }
-  int nyg = -1, nyr = -1, lsu = -1, nyy = -1, dal = -1, ny = -1, fla = -1;
+  int nyg = -1, nyr = -1, lsu = -1, nyy = -1, dal = -1, ny = -1, fla = -1, byu = -1;
   for (int i = 0; i < settings.npicks; i++) {
     String k = teamKey(settings.picks[i]);
     if (k == "NFL:NYG") nyg = i; if (k == "NHL:NYR") nyr = i; if (k == "CFB:LSU") lsu = i; if (k == "MLB:NYY") nyy = i;
-    if (k == "NFL:DAL") dal = i; if (k == "NBA:NY") ny = i; if (k == "CFB:FLA") fla = i;
+    if (k == "NFL:DAL") dal = i; if (k == "NBA:NY") ny = i; if (k == "CFB:FLA") fla = i; if (k == "CFB:BYU") byu = i;
   }
 
   // 1. nothing heard yet
@@ -118,28 +118,53 @@ int main() {
   uiHome(1); save("g04_home_page2");
 
   // game screens
-  playGame(settings.picks[nyg], fakeG[nyg], true, -1); save("g05_football_live");
+  playGame(settings.picks[nyg], fakeG[nyg], true, -1, PG_OPEN); save("g05_football_live");
   fakeG[nyg] = real;
-  playGame(settings.picks[nyg], fakeG[nyg], true, -1); save("g06_football_upcoming");
-  playGame(settings.picks[dal], fakeG[dal], true, -1); save("g07_football_final");
-  playGame(settings.picks[lsu], fakeG[lsu], true, 14); save("g08_college_today_auto");
+  playGame(settings.picks[nyg], fakeG[nyg], true, -1, PG_OPEN); save("g06_football_upcoming");
+  playGame(settings.picks[dal], fakeG[dal], true, -1, PG_OPEN); save("g07_football_final");
+  playGame(settings.picks[lsu], fakeG[lsu], true, 14, PG_OPEN); save("g08_college_today_auto");
   Game h = fakeG[nyr];
   makeLive(fakeG[nyr], 2, 1, 2, "8:31", "");
-  playGame(settings.picks[nyr], fakeG[nyr], true, -1); save("g09_hockey_live");
+  playGame(settings.picks[nyr], fakeG[nyr], true, -1, PG_OPEN); save("g09_hockey_live");
   fakeG[nyr] = h;
-  playGame(settings.picks[nyr], fakeG[nyr], true, -1); save("g10_hockey_upcoming");
+  playGame(settings.picks[nyr], fakeG[nyr], true, -1, PG_OPEN); save("g10_hockey_upcoming");
   Game b = fakeG[ny];
   makeLive(fakeG[ny], 108, 102, 4, "1:05", "");
-  playGame(settings.picks[ny], fakeG[ny], true, -1); save("g11_basketball_3digits");
+  playGame(settings.picks[ny], fakeG[ny], true, -1, PG_OPEN); save("g11_basketball_3digits");
   fakeG[ny] = b;
   // baseball: the Yankees have no game this week, so borrow the Mets' look with a made-up one
-  playGame(settings.picks[nyy], fakeG[nyy], true, -1); save("g12_no_game");
+  playGame(settings.picks[nyy], fakeG[nyy], true, -1, PG_OPEN); save("g12_no_game");
   Game base = fakeG[nyg];
   base.league = L_MLB;
   makeLive(base, 4, 2, 5, "", "Top 5th");
-  playGame(settings.picks[nyg], base, true, -1); save("g13_baseball_live_made_up");
+  playGame(settings.picks[nyg], base, true, -1, PG_OPEN); save("g13_baseball_live_made_up");
+  // football, from the real game ESPN has on right now (BYU at home against Iowa State)
+  Game live = fakeG[byu];
+  fprintf(stderr, "LIVE fb has=%d poss=%d yard=%d dist=%d dd=%s at=%s win=%d drive=%d to=%d/%d id=%s/%s\n", live.fb.has, live.fb.possession, live.fb.yardLine, live.fb.distance, live.fb.dd, live.fb.at, live.fb.winHome, live.fb.driveStart, live.fb.toAway, live.fb.toHome, live.away.id, live.home.id);
+  playGame(settings.picks[byu], live, true, -1, PG_OPEN); save("g15_football_live_real");
+  // the next play: the ball moves and the last-play card pops up (redraw of just the moving parts)
+  Game next = live;
+  next.fb.yardLine = 14; next.fb.down = 1; next.fb.distance = 10; next.fb.driveStart = 5;
+  snprintf(next.fb.dd, sizeof(next.fb.dd), "1st & 10"); snprintf(next.fb.at, sizeof(next.fb.at), "BYU 14");
+  snprintf(next.fb.playId, sizeof(next.fb.playId), "401856826111");
+  snprintf(next.fb.play, sizeof(next.fb.play), "Shotgun #20 J.Tonga rush middle for 9 yards gain to the BYU14 for a 1ST down (#97 M.Baloun, #4 J.Smith)");
+  next.fb.winHome = 86; next.away.score = 0; next.home.score = 7; snprintf(next.clock, sizeof(next.clock), "4:01");
+  playGame(settings.picks[byu], next, true, -1, PG_DYN); save("g16_football_next_play_card");
+  // the same game drawn from scratch, to check the partial redraw looks identical
+  playGame(settings.picks[byu], next, true, -1, PG_FULL); save("g16b_football_full_redraw");
+  // red zone: BYU attacking Iowa State's end
+  Game rz = next;
+  rz.fb.redzone = true; rz.fb.yardLine = 88; rz.fb.down = 1; rz.fb.distance = 10; rz.fb.driveStart = 55;
+  snprintf(rz.fb.dd, sizeof(rz.fb.dd), "1st & 10"); snprintf(rz.fb.at, sizeof(rz.fb.at), "ISU 12");
+  snprintf(rz.fb.playId, sizeof(rz.fb.playId), "401856826120");
+  snprintf(rz.fb.play, sizeof(rz.fb.play), "Pass complete to #8 C.Hall for 22 yards to the ISU12");
+  rz.home.score = 7; rz.away.score = 3; rz.period = 2; snprintf(rz.clock, sizeof(rz.clock), "9:44"); rz.fb.winHome = 71;
+  playGame(settings.picks[byu], rz, true, -1, PG_FULL); save("g17_football_red_zone");
+  fakeG[byu] = rz;
+  uiHome(0); save("g18_home_red_zone_tile");
+  fakeG[byu] = live;
   // logos not here yet: the letters
   setenv("MN_LOGOS", "nowhere", 1);
-  playGame(settings.picks[nyg], real, true, -1); save("g14_logos_missing");
+  playGame(settings.picks[nyg], real, true, -1, PG_OPEN); save("g14_logos_missing");
   return 0;
 }

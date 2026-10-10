@@ -7,6 +7,7 @@
 #include <time.h>
 #include <string>
 #include <stdlib.h>
+#include <ctype.h>
 
 #ifndef DEG_TO_RAD
 #define DEG_TO_RAD 0.017453292519943295f
@@ -30,6 +31,8 @@ class String : public std::string {
   int indexOf(char c, int from = 0) const { auto p = find(c, from); return p == npos ? -1 : (int)p; }
   int indexOf(const String& s) const { auto p = find(s); return p == npos ? -1 : (int)p; }
   void trim() { erase(0, find_first_not_of(" \t\r\n")); erase(find_last_not_of(" \t\r\n") + 1); }
+  void toUpperCase() { for (auto& c : *this) c = toupper((unsigned char)c); }
+  void toLowerCase() { for (auto& c : *this) c = tolower((unsigned char)c); }
   long toInt() const { return atol(c_str()); }
   String& operator+=(const String& o) { append(o); return *this; }
   String& operator+=(const char* o) { append(o); return *this; }

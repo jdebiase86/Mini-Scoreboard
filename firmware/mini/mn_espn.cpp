@@ -18,7 +18,8 @@ bool Game::same(const Game& o) const {
          !strcmp(clock, o.clock) && !strcmp(detail, o.detail) && !strcmp(net, o.net) &&
          !strcmp(away.abbr, o.away.abbr) && !strcmp(home.abbr, o.home.abbr) && away.score == o.away.score &&
          home.score == o.home.score && away.hasScore == o.away.hasScore && !strcmp(away.rec, o.away.rec) &&
-         !strcmp(home.rec, o.home.rec) && !strcmp(away.logo, o.away.logo) && !strcmp(home.logo, o.home.logo);
+         !strcmp(home.rec, o.home.rec) && !strcmp(away.logo, o.away.logo) && !strcmp(home.logo, o.home.logo) &&
+         away.color == o.away.color && home.color == o.home.color && fb.same(o.fb);
 }
 
 template <size_t N> static void scopy(char (&dst)[N], const char* src) {
@@ -47,6 +48,15 @@ bool espnLoad(ByteSource& src, JsonDocument& doc) {
   ev["competitions"][0]["competitors"][0]["team"]["shortDisplayName"] = true;
   ev["competitions"][0]["competitors"][0]["team"]["logo"] = true;
   ev["competitions"][0]["competitors"][0]["team"]["logoDark"] = true;
+  ev["competitions"][0]["competitors"][0]["team"]["color"] = true;
+  JsonObject sit = ev["competitions"][0]["situation"].to<JsonObject>();
+  for (const char* k : {"down", "distance", "yardLine", "downDistanceText", "shortDownDistanceText", "possessionText",
+                        "isRedZone", "possession", "homeTimeouts", "awayTimeouts"})
+    sit[k] = true;
+  sit["lastPlay"]["id"] = true;
+  sit["lastPlay"]["text"] = true;
+  sit["lastPlay"]["probability"]["homeWinPercentage"] = true;
+  sit["lastPlay"]["drive"]["start"]["text"] = true;
   DeserializationError e = deserializeJson(doc, src, DeserializationOption::Filter(filter),
                                            DeserializationOption::NestingLimit(20));
   return !e;
@@ -78,9 +88,50 @@ static void fillSide(TeamSide& s, JsonObjectConst c) {
   scopy(s.name, t["shortDisplayName"] | (const char*)(t["displayName"] | ""));
   scopy(s.rec, c["records"][0]["summary"] | "");
   logoPath(s.logo, t);
+  scopy(s.id, t["id"] | "");
+  s.color = (uint32_t)strtoul(t["color"] | "0", nullptr, 16);
   const char* sc = c["score"] | "";
   s.hasScore = sc[0] != 0;
   s.score = atoi(sc);
+}
+
+// "BYU 7" or "50" -> the yard line on ESPN's scale (0 = home goal line)
+static int16_t spot(const char* text, const Game& g) {
+  if (!text || !*text) return -1;
+  if (!strcmp(text, "50")) return 50;
+  const char* sp = strrchr(text, ' ');
+  if (!sp) return -1;
+  int yd = atoi(sp + 1);
+  size_t n = sp - text;
+  if (n == strlen(g.home.abbr) && !strncasecmp(text, g.home.abbr, n)) return yd;
+  if (n == strlen(g.away.abbr) && !strncasecmp(text, g.away.abbr, n)) return 100 - yd;
+  return -1;
+}
+
+static void fillFootball(Game& g, JsonObjectConst s) {
+  FbSit& f = g.fb;
+  if (s.isNull()) return;
+  f.has = true;
+  f.down = s["down"] | 0;
+  f.distance = s["distance"] | 0;
+  f.yardLine = s["yardLine"] | -1;
+  f.redzone = s["isRedZone"] | false;
+  f.toHome = s["homeTimeouts"] | -1;
+  f.toAway = s["awayTimeouts"] | -1;
+  scopy(f.dd, s["shortDownDistanceText"] | "");
+  scopy(f.at, s["possessionText"] | "");
+  const char* p = s["possession"] | "";
+  if (*p && !strcmp(p, g.home.id)) f.possession = 2;
+  else if (*p && !strcmp(p, g.away.id)) f.possession = 1;
+  JsonObjectConst lp = s["lastPlay"];
+  scopy(f.playId, lp["id"] | "");
+  JsonVariantConst wp = lp["probability"]["homeWinPercentage"];
+  if (!wp.isNull()) f.winHome = (int8_t)lround(wp.as<double>() * 100);
+  f.driveStart = spot(lp["drive"]["start"]["text"] | "", g);
+  // the play in words, without its leading "(04:37) " clock
+  const char* t = lp["text"] | "";
+  if (*t == '(') { const char* c = strchr(t, ')'); if (c) { t = c + 1; while (*t == ' ') t++; } }
+  scopy(f.play, t);
 }
 
 static bool isTeam(JsonObjectConst c, int team) {
@@ -117,6 +168,7 @@ bool espnFind(const JsonDocument& doc, int team, time_t now, Game& out) {
       fillSide(home ? g.home : g.away, cps[i]);
       if (i == mine) g.mineHome = home;
     }
+    if (g.state == GS_LIVE && (g.league == L_NFL || g.league == L_CFB)) fillFootball(g, e["competitions"][0]["situation"]);
     // live beats everything; then a final from the last day and a half;
     // then the next one to start; then an older final
     long hours = (long)((g.start - now) / 3600);

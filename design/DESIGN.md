@@ -148,7 +148,7 @@ built in the stages below.
    from ESPN's own picture server kept in flash, live / final / upcoming
    tiles with live games first, a basic game screen for every sport (logos,
    score, clock, status), AUTO rotation every 20 s. Football field strip,
-   win chance bar and last-play card are stage 3. Pictures drawn from real
+   win chance bar and last-play card: v0.4 (stage 3, football first). Pictures drawn from real
    ESPN feeds: design/mini_stage2.png.
 3. Game screens: football field strip with the drive, win chance bar, last
    play pop-up; then the other sports.

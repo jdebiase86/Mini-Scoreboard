@@ -11,7 +11,7 @@ BASE = "https://site.api.espn.com/apis/site/v2/sports/"
 LEAGUES = {"nfl": "football/nfl", "cfb": "football/college-football", "mlb": "baseball/mlb",
            "nhl": "hockey/nhl", "nba": "basketball/nba"}
 # (league, conference group or "", days ahead from today or None)
-WANT = [("nfl", "", None), ("cfb", "8", None), ("cfb", "5", None)] + \
+WANT = [("nfl", "", None), ("cfb", "8", None), ("cfb", "5", None), ("cfb", "4", None)] + \
        [(l, "", d) for l in ("mlb", "nhl", "nba") for d in range(0, 8)]
 
 
@@ -20,6 +20,18 @@ def curl(url, out=None):
     if out: cmd += ["-o", out]
     r = subprocess.run(cmd, capture_output=True)
     return r.stdout if not out else r
+
+
+def situation(s):
+    if not s: return None
+    keys = ("down", "distance", "yardLine", "downDistanceText", "shortDownDistanceText", "possessionText",
+            "isRedZone", "possession", "homeTimeouts", "awayTimeouts")
+    out = {k: s.get(k) for k in keys if k in s}
+    lp = s.get("lastPlay") or {}
+    out["lastPlay"] = {"id": lp.get("id"), "text": lp.get("text"),
+                       "probability": {"homeWinPercentage": (lp.get("probability") or {}).get("homeWinPercentage")},
+                       "drive": {"start": {"text": ((lp.get("drive") or {}).get("start") or {}).get("text")}}}
+    return out
 
 
 def trim(d):
@@ -32,10 +44,11 @@ def trim(d):
                        "type": {k: e["status"]["type"].get(k) for k in ("state", "name", "shortDetail")}},
             "competitions": [{
                 "broadcasts": [{"names": b.get("names", [])[:1]} for b in c.get("broadcasts", [])[:1]],
+                "situation": situation(c.get("situation")),
                 "competitors": [{
                     "homeAway": p.get("homeAway"), "score": p.get("score"),
                     "records": [{"summary": r.get("summary")} for r in p.get("records", [])[:1]],
-                    "team": {k: p["team"].get(k) for k in ("id", "abbreviation", "displayName", "shortDisplayName", "logo", "logoDark")},
+                    "team": {k: p["team"].get(k) for k in ("id", "abbreviation", "displayName", "shortDisplayName", "logo", "logoDark", "color")},
                 } for p in c["competitors"]]}]})
     return {"events": keep}
 
@@ -59,7 +72,7 @@ for lg, group, ahead in WANT:
     print(name, len(d["events"]), "events")
 
 # logos: only for the demo favourites and whoever they play (only the sizes the screens use)
-DEMO = {"nfl": {"NYG", "DAL"}, "cfb": {"FLA", "LSU"}, "mlb": {"NYY"}, "nhl": {"NYR"}, "nba": {"NY"}}
+DEMO = {"nfl": {"NYG", "DAL"}, "cfb": {"FLA", "LSU", "BYU", "ISU"}, "mlb": {"NYY"}, "nhl": {"NYR"}, "nba": {"NY"}}
 seen = set()
 for f in sorted(os.listdir(os.path.join(HERE, "feeds"))):
     d = json.load(open(os.path.join(HERE, "feeds", f)))

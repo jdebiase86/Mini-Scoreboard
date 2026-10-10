@@ -11,9 +11,17 @@ uint32_t playTileSig(int team, const Game& g, bool known);
 
 // The full game screen for a favourite. autoSecs >= 0: AUTO is rotating and
 // that many seconds are left on this game.
-void playGame(int team, const Game& g, bool known, int autoSecs);
+//   PG_OPEN: the screen was just opened (what's on already isn't "new")
+//   PG_FULL: everything again;  PG_DYN: only what moves (scores, clock, field)
+enum { PG_OPEN = 0, PG_FULL, PG_DYN };
+void playGame(int team, const Game& g, bool known, int autoSecs, int mode);
+// The last-play card (football): it shows for a few seconds after each play
+bool playCardVisible();
+void playCardHide();
+void playCardTick();                  // call often: takes the card away when its time is up
 void playAutoTag(int autoSecs);       // just the "AUTO next game in 14s" tag
-uint32_t playGameSig(const Game& g, bool known);
+uint32_t playGameSig(const Game& g, bool known);   // everything on the screen
+uint32_t playGameShape(const Game& g, bool known); // what only changes when the screen needs redrawing in full
 
 // "Q3 4:12", "2nd 8:31", "Top 5th": one line for a live game
 String playStatus(const Game& g);

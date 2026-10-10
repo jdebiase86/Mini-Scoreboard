@@ -31,7 +31,7 @@ static bool dirty = true;
 static int shownPick = 0;    // M_TEAM: which favourite (index into settings.picks)
 static bool autoOn = false;  // M_TEAM: AUTO is rotating through the favourites
 static uint32_t autoAt = 0;  // when AUTO moves on
-static uint32_t seenVer = 0, shownSig = 0;
+static uint32_t seenVer = 0, shownSig = 0, shownShape = 0;
 static const uint32_t AUTO_MS = 20000;
 static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
 static String apName;
@@ -212,13 +212,14 @@ static int autoPick(int from) {
 //   team page: left / right to the next / previous team
 //   team picker list: up / down for the next / previous page
 //   (later: a pop-up card swiped away)
-static void handleSwipe(TouchEvent ev) {
+static void handleSwipe(TouchEvent ev, int sx, int sy) {
   switch (mode) {
     case M_HOME:
       if (ev == T_SWIPE_LEFT && homePage == 0 && uiHomePages() > 1) { homePage = 1; dirty = true; }
       if (ev == T_SWIPE_RIGHT && homePage == 1) { homePage = 0; dirty = true; }
       break;
     case M_TEAM: {
+      if (playCardVisible() && sy >= 240) { playCardHide(); break; }   // swipe the last-play card away
       if (settings.npicks < 2 || (ev != T_SWIPE_LEFT && ev != T_SWIPE_RIGHT)) break;
       shownPick = (shownPick + (ev == T_SWIPE_LEFT ? 1 : settings.npicks - 1)) % settings.npicks;
       autoAt = millis() + AUTO_MS;   // a swipe is a pick of your own: AUTO waits a full turn
@@ -266,7 +267,7 @@ void loop() {
   if (ev) {
     if (dimmed) { lcdBrightness(level()); dimmed = false; }
     else if (ev == T_TAP) handleTap(tx, ty);
-    else handleSwipe(ev);
+    else handleSwipe(ev, tx, ty);
   } else if (touchDown() && dimmed) {
     lcdBrightness(level());   // wake as soon as the finger lands; the tap itself is swallowed
   }
@@ -330,14 +331,22 @@ void loop() {
         left = (int)(AUTO_MS / 1000);
       }
       uint32_t sig = settings.npicks ? playGameSig(g, known) : 0;
-      if (dirty || sig != shownSig) {
-        if (settings.npicks) playGame(settings.picks[shownPick], g, known, left);
+      uint32_t shape = settings.npicks ? playGameShape(g, known) : 0;
+      if (dirty || shape != shownShape) {
+        // opening the screen, or the game itself changed: everything again
+        if (settings.npicks) playGame(settings.picks[shownPick], g, known, left, dirty ? PG_OPEN : PG_FULL);
         shownSig = sig;
+        shownShape = shape;
         dirty = false;
+      } else if (sig != shownSig) {
+        // the score, clock or ball moved: just those parts
+        playGame(settings.picks[shownPick], g, known, left, PG_DYN);
+        shownSig = sig;
       } else if (autoOn) {
         static int lastLeft = -2;
         if (left != lastLeft) { playAutoTag(left); lastLeft = left; }
       }
+      playCardTick();
       break;
     }
 

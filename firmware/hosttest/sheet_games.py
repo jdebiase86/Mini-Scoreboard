@@ -19,6 +19,11 @@ CAP = {
     "g12_no_game": "A team with no game this week (real)",
     "g13_baseball_live_made_up": "Baseball, live (made-up game) *",
     "g14_logos_missing": "Logo not downloaded yet: letters",
+    "g15_football_live_real": "LIVE: BYU - Iowa State, real ESPN data",
+    "g16_football_next_play_card": "Next play: ball moves, card pops up *",
+    "g16b_football_full_redraw": "Same, redrawn from scratch (must match)",
+    "g17_football_red_zone": "Red zone: red tint, outline, RED ZONE *",
+    "g18_home_red_zone_tile": "Home tile in the red zone *",
 }
 files = sorted(glob.glob(os.path.join(HERE, "out/g[0-9]*.ppm")))
 cols, W, H, pad, cap = 3, 480, 320, 24, 34
