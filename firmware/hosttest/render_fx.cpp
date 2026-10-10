@@ -114,10 +114,10 @@ static void frameTimes(const char* name, FxSpec f, std::initializer_list<int> sh
   uint32_t start = fakeMs;
   int idx = 0;
   while (fxActive() && fakeMs - start < fxLength(f.kind) + 200) {
-    adv(70);
+    adv(33);
     fxStep();
     for (int s : shots) {
-      if ((int)(fakeMs - start) >= s && (int)(fakeMs - start) < s + 70) {
+      if ((int)(fakeMs - start) >= s && (int)(fakeMs - start) < s + 33) {
         char n[64]; snprintf(n, sizeof(n), "%s_%d", name, idx++); save(n);
       }
     }
@@ -144,13 +144,13 @@ int main() {
   int dal = idx("NFL:DAL"), jax = idx("NFL:JAX"), cle = idx("MLB:CLE"), det = idx("NHL:DET"), mav = idx("NBA:DAL");
   Game fb = fakeG[jax], bb = fakeG[cle], hk = fakeG[det], nba = fakeG[mav];
   fb.mine().score; 
-  frameTimes("td", spec(FX_TOUCHDOWN, fb, "TOUCHDOWN", "JAX 28   PHI 17"), {500, 2500});
+  frameTimes("td", spec(FX_TOUCHDOWN, fb, "TOUCHDOWN", "JAX 28   PHI 17"), {300, 600, 1500, 3000});
   frameTimes("fg", spec(FX_FIELDGOAL, fb, "IT'S GOOD!", "JAX 20   PHI 17"), {1200, 2300, 3300, 5000});
   frameTimes("nogood", spec(FX_NOGOOD, fb, "NO GOOD", "JAX KEEP 17", true), {2300, 4300});
   frameTimes("theirs", spec(FX_THEIRSCORE, fb, "TOUCHDOWN", "JAX 21   PHI 24", true), {1000});
-  frameTimes("goal", spec(FX_GOAL, hk, "GOAL!", "DET 3   PHI 2"), {1000, 2500});
-  frameTimes("hr", spec(FX_HOMERUN, bb, "HOME RUN!", "CLE 4   CHW 2"), {1000, 3000});
-  frameTimes("three", spec(FX_THREE, nba, "THREE!", "DAL 88   HOU 85"), {1000});
+  frameTimes("goal", spec(FX_GOAL, hk, "GOAL!", "DET 3   PHI 2"), {600, 2100, 2500, 3500});
+  frameTimes("hr", spec(FX_HOMERUN, bb, "HOME RUN!", "CLE 4   CHW 2"), {200, 800, 1500, 2600, 4200});
+  frameTimes("three", spec(FX_THREE, nba, "THREE!", "DAL 88   HOU 85"), {800, 1500, 2400, 3500});
   frameTimes("win", spec(FX_WIN, fb, "JAGUARS WIN", "FINAL  31 - 24"), {900, 3000});
   frameTimes("kickoff", spec(FX_KICKOFF, fb, "KICKOFF", "PHI  AT  JAX"), {1000});
   frameTimes("quarter", spec(FX_QUARTER, fb, "HALFTIME", "JAX 14   PHI 10"), {1000});

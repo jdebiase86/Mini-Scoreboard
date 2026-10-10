@@ -11,6 +11,9 @@ static FxSpec spec;
 static bool active = false;
 static uint32_t t0 = 0, lastStep = 0, seed = 1;
 static int stage = -1;          // which part of the scene has been drawn
+static uint16_t stageCol = 0;
+static int nsp = 0;
+static uint32_t lastTick = 0, nxtA = 0, blkA = 0, nxtB = 0, blkB = 0, altG = 99;
 
 static uint32_t rnd() { seed = seed * 1664525u + 1013904223u; return seed >> 8; }
 static int rnd(int n) { return n > 0 ? (int)(rnd() % (uint32_t)n) : 0; }
@@ -192,9 +195,12 @@ uint32_t fxLength(FxKind k) {
   switch (k) {
     case FX_FIELDGOAL: return 6200;
     case FX_NOGOOD: return 5600;
-    case FX_TOUCHDOWN: case FX_GOAL: case FX_HOMERUN: return 4600;
-    case FX_WIN: return 5400;
-    case FX_RUN: case FX_THREE: return 3400;
+    case FX_TOUCHDOWN: return 4600;
+    case FX_GOAL: return 4800;
+    case FX_HOMERUN: return 5200;
+    case FX_THREE: return 4400;
+    case FX_WIN: return 5600;
+    case FX_RUN: return 3400;
     case FX_KICKOFF: case FX_QUARTER: return 3200;
     case FX_FIRSTDOWN: return 2200;
     case FX_FLAG: return 3000;
@@ -215,6 +221,8 @@ void fxStart(const FxSpec& f) {
   wide = f.kind == FX_NOGOOD;
   wideDir = rnd(2) ? 1 : -1;
   ballPx = -1;
+  lastTick = 0; nxtA = nxtB = blkA = blkB = 0; altG = 99;
+  nsp = 0;
 }
 
 // ------------------------------------------------------------------ the scenes
@@ -332,7 +340,7 @@ static void confettiInit() {
   static const uint16_t cols[] = {0xF800, 0xFFE0, 0x07FF, 0xF81F, 0xFFFF, 0x07E0, 0xFD20};
   nbits = 56;
   for (int i = 0; i < nbits; i++) {
-    bits[i].x = rnd(2) ? rnd(130) : 350 + rnd(130);
+    bits[i].x = rnd(2) ? rnd(84) : 396 + rnd(80);
     bits[i].y = -rnd(300);
     bits[i].vy = 3 + rnd(5);
     bits[i].col = cols[rnd(7)];
@@ -340,13 +348,13 @@ static void confettiInit() {
   }
 }
 static void confettiStep() {
-  const uint16_t bg = rgb(12, 22, 60);
+  const uint16_t bg = stageCol ? stageCol : rgb(12, 22, 60);
   for (int i = 0; i < nbits; i++) {
     Bit& b = bits[i];
     if (b.y >= 0) lcd.fillRect(b.x, b.y, b.w, b.h, bg);
     b.y += b.vy;
     b.x += rnd(3) - 1;
-    if (b.y > 320) { b.y = -10; b.x = rnd(2) ? rnd(130) : 350 + rnd(130); }
+    if (b.y > 320) { b.y = -10; b.x = rnd(2) ? rnd(84) : 396 + rnd(80); }
     if (b.y >= 0) lcd.fillRect(b.x, b.y, b.w, b.h, b.col);
   }
 }
@@ -410,13 +418,393 @@ static bool fgStep(uint32_t t) {
   return true;
 }
 
+
+// ================================================================== the big moments (after the LED board's animations)
+// A dark stage, fireworks that fade as they fall, shock-wave rings, white flashes, and words that blink between the team's
+// colour and white. Everything is a function of the time since the start, drawn in small pieces over a flat colour (so
+// what moves can be rubbed out cleanly): nothing is redrawn whole.
+static int pX0 = 0, pY0 = 0, pX1 = 0, pY1 = 0;     // sparks stay out of this box (the logo and words)
+struct Spark { float x, y, vx, vy, life, decay; uint8_t r, g, b; int16_t ex, ey; uint8_t ew, eh; bool drawn; };
+static Spark sp[90];
+struct Ring { float cx, cy, t0, speed, maxr, lastR; uint8_t r, g, b; bool used; };
+static Ring rg[4];
+
+static void rgbOf(uint32_t c, uint8_t& r, uint8_t& g, uint8_t& b, bool lift) {
+  r = (c >> 16) & 255; g = (c >> 8) & 255; b = c & 255;
+  int m = r > g ? (r > b ? r : b) : (g > b ? g : b);
+  if (!c) { r = g = b = 255; return; }
+  if (lift && m < 150) { float f = 200.0f / (m ? m : 1); r = r * f > 255 ? 255 : (uint8_t)(r * f); g = g * f > 255 ? 255 : (uint8_t)(g * f); b = b * f > 255 ? 255 : (uint8_t)(b * f); }
+}
+static float frnd() { return (rnd() & 0xFFFF) / 65536.0f; }
+
+static void paletteOf(uint8_t pal[5][3], int& n) {
+  n = 0;
+  rgbOf(spec.mine.color, pal[0][0], pal[0][1], pal[0][2], true); n = 1;
+  static const uint8_t extra[4][3] = {{255, 215, 0}, {255, 255, 255}, {255, 110, 30}, {255, 255, 255}};
+  for (int i = 0; i < 3; i++) { pal[n][0] = extra[i][0]; pal[n][1] = extra[i][1]; pal[n][2] = extra[i][2]; n++; }
+}
+
+static void blast(float cx, float cy, float power) {
+  uint8_t pal[5][3]; int np; paletteOf(pal, np);
+  const float cnt[3] = {30 * power, 22 * power, 14 * power}, spd[3] = {7.4f, 4.4f, 2.1f};
+  for (int k = 0; k < 3; k++) {
+    for (int i = 0; i < (int)cnt[k] && nsp < 90; i++) {
+      // reuse a dead slot
+      int slot = -1;
+      for (int j = 0; j < nsp; j++) if (sp[j].life <= 0 && !sp[j].drawn) { slot = j; break; }
+      if (slot < 0) slot = nsp++;
+      Spark& p = sp[slot];
+      float ang = frnd() * 6.2832f, s = spd[k] * (0.6f + frnd() * 0.8f);
+      p.x = cx; p.y = cy; p.vx = cosf(ang) * s; p.vy = sinf(ang) * s; p.life = 1; p.decay = 0.0075f + frnd() * 0.0065f;
+      const uint8_t* c = pal[rnd(np)]; p.r = c[0]; p.g = c[1]; p.b = c[2]; p.drawn = false;
+    }
+  }
+}
+
+// rubbing out a box, but never over the logo and words
+static void eraseBox(int x, int y, int w, int h) {
+  if (pX1 <= pX0 || x >= pX1 || x + w <= pX0 || y >= pY1 || y + h <= pY0) { lcd.fillRect(x, y, w, h, stageCol); return; }
+  if (y < pY0) lcd.fillRect(x, y, w, pY0 - y, stageCol);
+  if (y + h > pY1) lcd.fillRect(x, pY1, w, y + h - pY1, stageCol);
+  int a = y > pY0 ? y : pY0, b = y + h < pY1 ? y + h : pY1;
+  if (b > a) {
+    if (x < pX0) lcd.fillRect(x, a, pX0 - x, b - a, stageCol);
+    if (x + w > pX1) lcd.fillRect(pX1, a, x + w - pX1, b - a, stageCol);
+  }
+}
+
+static void sparksStep(int ticks, bool gravity = true) {
+  for (int j = 0; j < nsp; j++) {
+    Spark& p = sp[j];
+    if (p.drawn) { eraseBox(p.ex, p.ey, p.ew, p.eh); p.drawn = false; }
+    if (p.life <= 0) continue;
+    for (int t = 0; t < ticks; t++) {
+      p.x += p.vx; p.y += p.vy; if (gravity) p.vy += 0.085f; p.vx *= 0.985f; p.life -= p.decay;
+      if (p.life <= 0) break;
+    }
+    if (p.life <= 0) continue;
+    float b = p.life > 1 ? 1 : p.life;
+    int x = (int)p.x, y = (int)p.y;
+    if (x < 2 || y < 2 || x > 476 || y > 316) continue;
+    if (x > pX0 && x < pX1 && y > pY0 && y < pY1) continue;
+    uint16_t c = rgb((uint8_t)(p.r * b), (uint8_t)(p.g * b), (uint8_t)(p.b * b));
+    int tx = x - (int)(p.vx * 1.6f), ty = y - (int)(p.vy * 1.6f);
+    if (b > 0.35f && !(tx > pX0 && tx < pX1 && ty > pY0 && ty < pY1)) {
+      lcd.fillRect(tx, ty, 2, 2, rgb((uint8_t)(p.r * b * 0.4f), (uint8_t)(p.g * b * 0.4f), (uint8_t)(p.b * b * 0.4f)));
+    }
+    lcd.fillRect(x - 1, y - 1, 3, 3, c);
+    int ex = (tx < x ? tx : x) - 2, ey = (ty < y ? ty : y) - 2;
+    int ew = abs(tx - x) + 6, eh = abs(ty - y) + 6;
+    p.ex = ex; p.ey = ey; p.ew = ew > 40 ? 40 : ew; p.eh = eh > 40 ? 40 : eh; p.drawn = true;
+  }
+}
+static void sparksClear() {
+  for (int j = 0; j < nsp; j++) { if (sp[j].drawn) eraseBox(sp[j].ex, sp[j].ey, sp[j].ew, sp[j].eh); sp[j].drawn = false; sp[j].life = 0; }
+  nsp = 0;
+}
+
+static void ringsAdd(float cx, float cy, float t0, float speed, float maxr, uint8_t r, uint8_t g, uint8_t b) {
+  for (Ring& q : rg) if (!q.used) { q = Ring{cx, cy, t0, speed, maxr, 0, r, g, b, true}; return; }
+}
+static void ringsStep(float t, bool eraseOnly = false) {
+  for (Ring& q : rg) {
+    if (!q.used) continue;
+    if (q.lastR > 1) { lcd.drawCircle((int)q.cx, (int)q.cy, (int)q.lastR, stageCol); lcd.drawCircle((int)q.cx, (int)q.cy, (int)q.lastR - 1, stageCol); lcd.drawCircle((int)q.cx, (int)q.cy, (int)q.lastR + 1, stageCol); }
+    float r = (t - q.t0) * q.speed;
+    if (eraseOnly || r > q.maxr) { q.used = false; continue; }
+    if (r < 2) { q.lastR = 0; continue; }
+    float b = 1 - r / q.maxr;
+    uint16_t c = rgb((uint8_t)(q.r * b), (uint8_t)(q.g * b), (uint8_t)(q.b * b));
+    lcd.drawCircle((int)q.cx, (int)q.cy, (int)r, c); lcd.drawCircle((int)q.cx, (int)q.cy, (int)r - 1, c);
+    q.lastR = r;
+  }
+}
+
+static void bigWord(const char* s, int y, bool alt) { word(s, y, alt ? C_WHITE : (spec.tape ? amber() : mineCol())); }
+
+// the settled end: the logo, the word blinking between white and the team's colour, sparks around them
+static void finale(const char* w, const char* sub) {
+  lcd.fillScreen(stageCol);
+  if (!logoDraw(spec.mine, CX, 112, 112, stageCol)) uiText(F_B36, spec.mine.abbr, CX, 112, C_WHITE, stageCol, middle_center);
+  bigWord(w, 232, false);
+  pill(sub, 292);
+  pX0 = 90; pX1 = 390; pY0 = 36; pY1 = 312;
+}
+
+// ---- scene pieces for the home run and the three
+static uint16_t crowdDot(int i) { static const uint16_t c[] = {0xF800, 0xFFE0, 0x07FF, 0xFFFF, 0xFD20, 0x07E0, 0xF81F}; return c[i % 7]; }
+static void park(int x, int y, int w, int h) {   // the night ballpark, any part of it
+  int y1 = y + h;
+  auto band = [&](int a, int b, uint16_t col) { int s = a > y ? a : y, e = b < y1 ? b : y1; if (e > s) lcd.fillRect(x, s, w, e - s, col); };
+  band(0, 70, rgb(8, 12, 34)); band(70, 120, rgb(14, 20, 52));          // the sky
+  band(120, 168, rgb(10, 14, 40));                                      // the crowd
+  band(168, 200, rgb(20, 90, 50)); band(198, 204, C_YELLOW);            // the wall and its yellow line
+  band(204, 240, rgb(30, 110, 56)); band(240, 270, rgb(26, 98, 48)); band(270, 320, rgb(34, 118, 60));
+}
+static void parkDetails() {   // lights on the roof line and the crowd, laid down once
+  for (int k = 0; k < 9; k++) { int lx = 30 + k * 52; lcd.fillRect(lx, 22, 14, 6, rgb(255, 250, 200)); lcd.fillRect(lx + 2, 28, 10, 2, rgb(160, 150, 100)); }
+  for (int i = 0; i < 90; i++) { int cx = 8 + (i * 37) % 464, cy = 126 + (i * 53) % 40; lcd.fillRect(cx, cy, 4, 6, crowdDot(i * 3)); }
+}
+static void batter(uint16_t jersey, bool swing) {
+  lcd.fillRect(100, 252, 12, 50, jersey);          // body
+  lcd.fillCircle(106, 244, 8, rgb(240, 190, 150)); // head
+  lcd.fillRect(98, 238, 16, 5, jersey);            // cap
+  if (swing) lcd.drawWideLine(112, 258, 150, 232, 3, C_WHITE); else lcd.drawWideLine(108, 252, 124, 226, 3, C_WHITE);
+}
+
+static void courtBackdrop() {
+  lcd.fillScreen(rgb(120, 78, 40));
+  for (int x = 0; x < 480; x += 48) lcd.fillRect(x, 0, 2, 320, rgb(104, 66, 34));
+  lcd.fillRect(0, 286, 480, 34, rgb(86, 54, 28));
+  // the three-point line
+  lcd.drawArc(420, 250, 250, 252, 90, 270, C_WHITE);
+  // backboard, rim and net
+  lcd.fillRect(430, 76, 8, 90, C_WHITE);
+  lcd.fillRect(392, 150, 40, 5, rgb(255, 110, 20));
+  for (int k = 0; k < 6; k++) lcd.drawLine(394 + k * 7, 155, 398 + k * 5, 188, C_WHITE);
+  lcd.drawLine(398, 188, 428, 188, C_WHITE);
+}
+
+// ---- one step of a big scene; true = still playing
+static bool bigStep(uint32_t t) {
+  const uint32_t TICK_MS = 17;
+  int ticks = lastTick ? (int)((millis() - lastTick) / TICK_MS) : 1;
+  if (ticks < 1) ticks = 1;
+  if (ticks > 6) ticks = 6;
+  lastTick = millis();
+  uint8_t pal[5][3]; int np; paletteOf(pal, np);
+  const uint16_t tm = mineCol();
+  switch (spec.kind) {
+    case FX_FIELDGOAL: case FX_NOGOOD: {
+      const bool good = spec.kind == FX_FIELDGOAL;
+      const uint32_t K0 = 700, K1 = 2400;
+      const uint16_t GROUND = rgb(24, 96, 46);
+      static int tx[10], ty[10], tr[10], ntr = 0;
+      auto posts = [&]() {
+        lcd.fillRect(399, 214, 5, 68, C_YELLOW);
+        lcd.fillRect(350, 170, 105, 5, C_YELLOW);
+        lcd.fillRect(350, 64, 5, 111, C_YELLOW); lcd.fillRect(450, 64, 5, 111, C_YELLOW);
+      };
+      if (stage < 0) {
+        stageCol = rgb(5, 9, 8); lcd.fillScreen(stageCol);
+        lcd.fillRect(0, 282, 480, 38, GROUND); lcd.fillRect(0, 282, 480, 3, rgb(90, 170, 100));
+        posts();
+        uiText(F_B24, "FIELD GOAL TRY", CX, 26, C_YELLOW, stageCol, middle_center);
+        ntr = 0; nsp = 0; pX0 = pX1 = pY0 = pY1 = 0; stage = 0;
+        wideDir = rnd(2) ? 1 : -1;
+      }
+      if (t < K1 + 50) {
+        for (int i = 0; i < ntr; i++) lcd.fillCircle(tx[i], ty[i], tr[i] + 3, ty[i] > 276 ? GROUND : stageCol);
+        ntr = 0;
+        lcd.fillRect(0, 282, 480, 38, GROUND); lcd.fillRect(0, 282, 480, 3, rgb(90, 170, 100));
+        posts();
+        if (t >= K0) {
+          float u = (float)(t - K0) / (K1 - K0); if (u > 1) u = 1;
+          int endx = good ? 402 : (wideDir > 0 ? 492 : 318), endy = good ? 112 : 104;
+          auto pos = [&](float uu, int& x, int& y) { x = 62 + (int)(uu * (endx - 62)); y = 270 - (int)(uu * (270 - endy)) - (int)(sinf(uu * 3.14159f) * 120); };
+          for (int k = 7; k >= 1; k--) {
+            float uu = u - k * 0.035f; if (uu < 0) continue;
+            int x, y; pos(uu, x, y);
+            lcd.fillCircle(x, y, 2, rgb((uint8_t)(200 - k * 22), (uint8_t)(110 - k * 12), (uint8_t)(40)));
+            if (ntr < 10) { tx[ntr] = x; ty[ntr] = y; tr[ntr] = 2; ntr++; }
+          }
+          int x, y; pos(u, x, y);
+          int w = 36 - (int)(u * 16), h = w * 6 / 10;
+          lcd.fillEllipse(x, y, w / 2, h / 2, rgb(150, 84, 40));
+          lcd.drawLine(x - w / 5, y, x + w / 5, y, C_WHITE);
+          if (ntr < 10) { tx[ntr] = x; ty[ntr] = y; tr[ntr] = w / 2; ntr++; }
+        }
+        return true;
+      }
+      if (stage == 0) {
+        stage = 1;
+        for (int i = 0; i < ntr; i++) lcd.fillCircle(tx[i], ty[i], tr[i] + 3, ty[i] > 276 ? GROUND : stageCol);
+        ntr = 0;
+        if (good) lcd.fillRect(356, 66, 94, 104, C_WHITE);   // the flash between the posts
+      }
+      if (stage == 1 && t >= K1 + 220) {
+        stage = 2;
+        if (good) { stageCol = rgb(5, 9, 8); blast(402, 120, 1.4f); finale(spec.word, spec.sub); }
+        else { tapeScene(true); captions(t); }
+      }
+      if (stage >= 2 && good) {
+        if (t / 130 != blkA) { blkA = t / 130; bigWord(spec.word, 232, blkA % 2); }
+        if (t > nxtA && t < 5000) { blast(60 + frnd() * 380, 30 + frnd() * 160, 0.9f); nxtA = t + 260 + (uint32_t)(frnd() * 200); }
+        sparksStep(ticks);
+      }
+      return true;
+    }
+    case FX_TOUCHDOWN: {
+      if (stage < 0) {
+        stageCol = rgb(4, 6, 12); lcd.fillScreen(C_WHITE); stage = 0; nsp = 0;
+        for (Ring& q : rg) q.used = false;
+        pX0 = pX1 = pY0 = pY1 = 0;
+      }
+      if (stage == 0 && t >= 120) {
+        lcd.fillScreen(stageCol);
+        blast(CX, 130, 1.3f);
+        ringsAdd(CX, 130, (float)t, 0.42f, 420, pal[0][0], pal[0][1], pal[0][2]);
+        ringsAdd(CX, 130, (float)t + 110, 0.31f, 380, pal[1][0], pal[1][1], pal[1][2]);
+        ringsAdd(CX, 130, (float)t + 230, 0.24f, 330, 255, 255, 255);
+        stage = 1;
+      }
+      if (stage == 1) {
+        if (t < 640) ringsStep((float)t);
+        else { ringsStep((float)t, true); stage = 2; finale(spec.word, spec.sub); }
+      }
+      if (stage >= 2) {
+        if (t > nxtA && t < 3900) { blast(60 + frnd() * 360, 30 + frnd() * 250, 1.05f); nxtA = t + 240 + (uint32_t)(frnd() * 200); }
+        if (t / 130 != blkA) { blkA = t / 130; bigWord(spec.word, 232, blkA % 2); }
+      }
+      if (stage >= 1) sparksStep(ticks);
+      return true;
+    }
+    case FX_GOAL: {
+      const float R = 255;
+      if (t < 2000) {
+        float ph = fmodf((float)t, 250.0f) / 250.0f;
+        float wash = 1 - fabsf(ph - 0.5f) * 2.4f; if (wash < 0) wash = 0;
+        lcd.fillScreen(rgb((uint8_t)(R * (0.08f + 0.45f * wash)), (uint8_t)(18 * (0.08f + 0.45f * wash)), (uint8_t)(18 * (0.08f + 0.45f * wash))));
+        // two beams turning round the lamp at the top
+        float a0 = ((float)t / 250.0f) * 6.2832f;
+        for (int k = 0; k < 2; k++) {
+          float a = a0 + k * 3.14159f;
+          lcd.drawWideLine(CX, 24, CX + (int)(cosf(a) * 520), 24 + (int)(fabsf(sinf(a)) * 470), 5, rgb(255, 90, 60));
+        }
+        lcd.fillCircle(CX, 24, 22, rgb((uint8_t)(120 + 135 * wash), 30, 30)); lcd.fillCircle(CX, 24, 10, rgb(255, 200, 200));
+        lcd.fillRoundRect(CX - 70, 150, 140, 70, 12, BLK);
+        uiText(F_B36, "GOAL", CX, 185, wash > 0.35f ? C_WHITE : rgb(255, 40, 40), BLK, middle_center);
+        stage = 0;
+      } else if (t < 2260) {
+        if (stage < 1) { lcd.fillScreen(C_WHITE); stage = 1; }
+      } else {
+        if (stage < 2) { stageCol = rgb(12, 4, 6); finale("GOAL!", spec.sub); stage = 2; }
+        bool alt = (t / 250) % 2;
+        if ((t / 250) != altG) {
+          altG = t / 250;
+          uint16_t edge = alt ? rgb(255, 40, 40) : rgb(120, 20, 20);
+          lcd.fillRect(0, 0, 6, 320, edge); lcd.fillRect(474, 0, 6, 320, edge);
+          bigWord("GOAL!", 232, alt);
+        }
+      }
+      return true;
+    }
+    case FX_HOMERUN: {
+      const uint32_t HIT = 120, GONE = 1900;
+      if (stage < 0) { stageCol = rgb(8, 10, 28); park(0, 0, 480, 320); parkDetails(); batter(mineCol(), false); stage = 0; nsp = 0; pX0 = pX1 = pY0 = pY1 = 0; }
+      if (t < GONE) {
+        // the ball, along its arc, with a trail
+        float u = t < HIT ? 0 : (float)(t - HIT) / (GONE - HIT);
+        if (u > 1) u = 1;
+        static int lx[9], ly[9], lr[9];
+        static int nl = 0;
+        if (t <= 40) nl = 0;
+        for (int i = 0; i < nl; i++) { park(lx[i] - lr[i] - 1, ly[i] - lr[i] - 1, lr[i] * 2 + 3, lr[i] * 2 + 3); }
+        if (u > 0) {
+          if (stage == 0) { batter(mineCol(), true); stage = 1; }
+          int bx = 118 + (int)(u * 330), by = 244 - (int)(u * 300) + (int)(u * u * 135);
+          int br = 8 - (int)(u * 4);
+          // the trail: six older positions, fading
+          for (int k = 6; k >= 1; k--) {
+            float uu = u - k * 0.03f; if (uu < 0) continue;
+            int tx = 118 + (int)(uu * 330), ty = 244 - (int)(uu * 300) + (int)(uu * uu * 135);
+            uint8_t g = (uint8_t)(220 - k * 28);
+            lcd.fillCircle(tx, ty, 2, rgb(g, g, g));
+            if (nl < 9) { lx[nl] = tx; ly[nl] = ty; lr[nl] = 2; nl++; }
+          }
+          lcd.fillCircle(bx, by, br, C_WHITE); lcd.drawCircle(bx, by, br - 3, rgb(210, 60, 60));
+          if (nl < 9) { lx[nl] = bx; ly[nl] = by; lr[nl] = br; nl++; }
+        }
+        // the crack of the bat
+        if (t >= HIT && t < HIT + 300) {
+          float k = 1 - (float)(t - HIT) / 300;
+          uint8_t g = (uint8_t)(255 * k);
+          for (int r = 6; r <= 26; r += 5) { lcd.drawLine(150 - r, 232, 150 + r, 232, rgb(g, g, g)); lcd.drawLine(150, 232 - r, 150, 232, rgb(g, g, g)); }
+        } else if (t >= HIT + 300 && t < HIT + 340) park(110, 190, 90, 70), batter(mineCol(), true);
+        return true;
+      }
+      if (stage < 2) { stage = 2; lcd.fillScreen(stageCol); nsp = 0; pX0 = 90; pX1 = 390; pY0 = 150; pY1 = 312; }
+      if (t < 3600 && t > nxtA) { blast(40 + frnd() * 400, 30 + frnd() * 110, 0.8f); nxtA = t + 280 + (uint32_t)(frnd() * 200); }
+      if (t / 200 != blkA || stage == 2) {
+        blkA = t / 200;
+        bool alt = blkA % 2;
+        const char* w = spec.word;
+        word(w, 205, alt ? C_WHITE : mineCol());
+        if (stage == 2) { pill(spec.sub, 292); stage = 3; }
+        if (t >= 3500 && stage == 3) { stage = 4; lcd.fillRect(0, 36, 480, 100, stageCol); logoDraw(spec.mine, CX, 90, 112, stageCol); pX0 = 90; pX1 = 390; pY0 = 24; pY1 = 312; }
+      }
+      sparksStep(ticks);
+      return true;
+    }
+    case FX_THREE: {
+      if (stage < 0) { courtBackdrop(); stageCol = rgb(6, 6, 10); stage = 0; nsp = 0; pX0 = pX1 = pY0 = pY1 = 0; }
+      if (t < 1850) {
+        static int lx[9], ly[9], nl = 0;
+        if (t <= 40) nl = 0;
+        for (int i = 0; i < nl; i++) { lcd.fillRect(lx[i] - 12, ly[i] - 12, 25, 25, rgb(120, 78, 40)); }
+        if (nl) { lcd.fillRect(0, 286, 480, 34, rgb(86, 54, 28)); }
+        lcd.fillRect(430, 76, 8, 90, C_WHITE); lcd.fillRect(392, 150, 40, 5, rgb(255, 110, 20));
+        for (int k = 0; k < 6; k++) lcd.drawLine(394 + k * 7, 155, 398 + k * 5, 188, C_WHITE);
+        lcd.drawLine(398, 188, 428, 188, C_WHITE);
+        nl = 0;
+        float u = t < 1300 ? (float)t / 1300 : 1;
+        int bx, by;
+        if (t < 1300) { bx = 40 + (int)(u * 356); by = 262 - (int)(u * 112) - (int)(sinf(u * 3.14159f) * 110); }
+        else if (t < 1650) { float d = (float)(t - 1300) / 350; bx = 396; by = 156 + (int)(d * 60); }
+        else { bx = 396; by = 216; }
+        if (t < 1300) for (int k = 6; k >= 1; k--) {
+          float uu = u - k * 0.03f; if (uu < 0) continue;
+          int tx = 40 + (int)(uu * 356), ty = 262 - (int)(uu * 112) - (int)(sinf(uu * 3.14159f) * 110);
+          lcd.fillCircle(tx, ty, 2, rgb(255, 160, 60));
+          if (nl < 9) { lx[nl] = tx; ly[nl] = ty; nl++; }
+        }
+        lcd.fillCircle(bx, by, 11, rgb(235, 120, 30)); lcd.drawLine(bx - 11, by, bx + 11, by, rgb(70, 35, 10)); lcd.drawLine(bx, by - 11, bx, by + 11, rgb(70, 35, 10));
+        if (nl < 9) { lx[nl] = bx; ly[nl] = by; nl++; }
+        if (t >= 1300) { lcd.drawLine(398, 188, 428, 188, C_WHITE); }
+        if (t >= 1650 && stage == 0) { lcd.fillScreen(C_WHITE); stage = 1; }
+        return true;
+      }
+      if (stage <= 1) {
+        stageCol = rgb(6, 6, 10); lcd.fillScreen(stageCol); stage = 2; blast(CX, 130, 1.2f);
+        pX0 = 90; pX1 = 390; pY0 = 110; pY1 = 312;
+      }
+      if (t < 3300 && t > nxtB) { blast(40 + frnd() * 400, 30 + frnd() * 250, 0.6f); nxtB = t + 220 + (uint32_t)(frnd() * 160); }
+      if (t / 200 != blkB || stage == 2) {
+        blkB = t / 200;
+        bool alt = blkB % 2;
+        lcd.fillRoundRect(60, 120, 360, 120, 16, BLK);
+        uiText(F_B36, "THREE", CX, 156, alt ? C_WHITE : tm, BLK, middle_center);
+        uiText(F_B24, "POINTER", CX, 204, rgb(pal[1][0], pal[1][1], pal[1][2]), BLK, middle_center);
+        if (stage == 2) { pill(spec.sub, 292); stage = 3; }
+      }
+      sparksStep(ticks);
+      return true;
+    }
+    case FX_WIN: {
+      if (stage < 0) { stageCol = rgb(8, 14, 40); lcd.fillScreen(stageCol); stage = 0; nsp = 0; confettiInit();
+        if (!logoDraw(spec.mine, CX, 112, 112, stageCol)) uiText(F_B36, spec.mine.abbr, CX, 112, C_WHITE, stageCol, middle_center);
+        word(spec.word, 232, C_WHITE); pill(spec.sub, 292); pX0 = 90; pX1 = 390; pY0 = 36; pY1 = 312; }
+      if (t > nxtA && t < 4800) { blast(50 + frnd() * 380, 40 + frnd() * 150, 0.9f); nxtA = t + 300 + (uint32_t)(frnd() * 220); }
+      sparksStep(ticks);
+      confettiStep();
+      return true;
+    }
+    default: return false;
+  }
+}
+
 bool fxStep() {
   if (!active) return false;
   uint32_t t = millis() - t0;
   if (t >= fxLength(spec.kind)) { active = false; return false; }
+  if (spec.kind == FX_TOUCHDOWN || spec.kind == FX_GOAL || spec.kind == FX_HOMERUN || spec.kind == FX_THREE || spec.kind == FX_WIN ||
+      spec.kind == FX_FIELDGOAL || spec.kind == FX_NOGOOD) {
+    if (lastStep && millis() - lastStep < 24) return true;
+    lastStep = millis();
+    return bigStep(t);
+  }
   if (lastStep && millis() - lastStep < 70) return true;
   lastStep = millis();
-  if (spec.kind == FX_FIELDGOAL || spec.kind == FX_NOGOOD) return fgStep(t);
   if (stage < 0) {
     scene(0, t);
     stage = 0;
