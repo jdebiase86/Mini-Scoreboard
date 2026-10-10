@@ -19,6 +19,8 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode);
 bool playCardVisible();
 void playCardHide();
 void playCardTick();                  // call often: takes the card away when its time is up
+// "OLD 75s" in the top bar when a live game hasn't heard from ESPN for a while (call every second or so)
+void playStale(int ageSecs, const Game& g);
 void playAutoLabel(const char* label);   // "NFL": the ticker is on one league; "" = all my teams
 void playAutoTag(int autoSecs);       // just the "AUTO next game in 14s" tag
 uint32_t playGameSig(const Game& g, bool known);   // everything on the screen

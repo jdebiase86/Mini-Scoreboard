@@ -215,10 +215,10 @@ static void drawTeams(const Game& g, const LiveInfo* live) {
 // ------------------------------------------------------------------ play
 static void drawPlay(const Game& g, const LiveInfo* live) {
   const FbSit& f = g.fb;
-  bool fb = f.has && f.play[0];
-  const char* text = fb ? f.play : live && live->hasPlay ? live->play : "";
+  bool fromPage = live && live->hasPlay;   // the game's own play list: ahead of the scoreboard's during stoppages
+  const char* text = fromPage ? live->play : f.has ? f.play : "";
   uiText(F_B12, "LAST PLAY", 14, 50, C_GREY, C_BG, middle_left);
-  if (!fb && live && live->hasPlay && live->playWhen[0]) uiText(F_B12, live->playWhen, 466, 50, C_GREY, C_BG, middle_right);
+  if (fromPage && live->playWhen[0]) uiText(F_B12, live->playWhen, 466, 50, C_GREY, C_BG, middle_right);
   String lines[6];
   int n = wrap(text, F_B18, 452, lines, 6);
   if (!n) { notice(g.state == GS_LIVE ? "Getting the last play..." : "No play to show", g.state == GS_LIVE ? "" : "The game's play list is empty."); return; }

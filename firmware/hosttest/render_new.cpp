@@ -208,6 +208,7 @@ int main() {
   playAutoLabel("NFL");
   playGame(settings.picks[jax2], live, true, 9, PG_OPEN); save("f03_ticker_tag");
   playAutoLabel("");
+  playGame(settings.picks[jax2], live, true, -1, PG_OPEN); playStale(135, live); save("f05_old_tag");
   { const char* names[] = {"All my teams", "NFL", "College football", "MLB", "NHL", "NBA"}; int total[] = {8, 2, 1, 1, 2, 2}, lv[] = {1, 1, 0, 0, 1, 0};
     uiTicker(names, total, lv, 6, 1); save("f04_ticker_chooser"); }
 

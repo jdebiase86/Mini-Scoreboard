@@ -459,6 +459,35 @@ static void drawCard(const Game& g) {
   if (line[1].length()) text(F_M15, line[1], CX0 + 14, CY0 + 56, C_WHITE, rgb(34, 40, 54), middle_left);
 }
 
+static int staleShown = -1;   // -1 nothing, else 1 (the tag is up)
+
+void playStale(int ageSecs, const Game& g) {
+  bool stale = g.state == GS_LIVE && ageSecs >= 45 && ageSecs < 65535;
+  static int lastAge = -1;
+  if (stale) {
+    int shown = ageSecs < 120 ? ageSecs / 5 * 5 : ageSecs / 60 * 60;   // so it doesn't redraw every second
+    if (staleShown == 1 && shown == lastAge) return;
+    lastAge = shown;
+    staleShown = 1;
+    lcd.fillRect(190, 3, 118, 26, C_BG);
+    String t = String("OLD ") + (ageSecs < 120 ? String(shown) + "s" : String(shown / 60) + " min");
+    useFont(F_B12);
+    int w = lcd.textWidth(t.c_str()) + 16;
+    uiTile(304 - w, 7, 304, 27, rgb(255, 176, 32), rgb(255, 176, 32), 10, 1);
+    text(F_B12, t, 304 - w / 2, 17, C_BG, rgb(255, 176, 32), middle_center);
+  } else if (staleShown == 1) {   // fresh again: the TV network comes back
+    staleShown = -1;
+    lastAge = -1;
+    lcd.fillRect(190, 3, 118, 26, C_BG);
+    if (g.net[0]) {
+      String nt = g.net;
+      useFont(F_S13);
+      while (nt.length() > 3 && lcd.textWidth(nt.c_str()) > 112) nt = nt.substring(0, nt.length() - 1);
+      text(F_S13, nt, 306, 18, C_GREY, C_BG, middle_right);
+    }
+  }
+}
+
 void playCardHold(const Game& g, uint32_t ms) {
   if (!g.fb.has || !g.fb.play[0]) return;
   drawCard(g);
@@ -486,6 +515,7 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     cardOn = false;
     uiHomeButton();
     lastAutoSecs = autoSecs;
+    staleShown = -1;
     lastBtnOn = known && g.state == GS_LIVE;
     if (lastBtnOn) drawLastBtn();
     playAutoTag(autoSecs);

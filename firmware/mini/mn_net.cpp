@@ -55,12 +55,17 @@ struct NetReader : ByteSource {
 };
 
 // ----------------------------------------------------------------- state
+// A download needs about 45 KB in a few pieces; the biggest free block is only 65 to 70 KB after a
+// while (logos fragment the memory), so asking for more than this left the scores frozen.
+static const size_t MIN_BLOCK = 48000;
+
 struct Slot {
   int team = -1;             // TEAMS index this slot is for
   Game g;
   bool known = false;
   time_t dayAt = 0;          // feed day as local noon (0 = today / this week); later while the next game is further off
   uint32_t nextAt = 0;
+  uint32_t okAt = 0;         // when this slot last got a good answer
   uint32_t wantUntil = 0;    // a details card is open (or was just): ask for the extras until then
   int fails = 0;
 };
@@ -72,6 +77,15 @@ static volatile bool picksDirty = true;
 bool mnWifiUp() { return WiFi.status() == WL_CONNECTED; }
 void netPicksChanged() { picksDirty = true; }
 uint32_t netVersion() { return version + logoVersion(); }
+
+// seconds since favourite `pick` last heard from ESPN (65535 = never)
+uint32_t netAgeSecs(int pick) {
+  if (pick < 0 || pick >= MAX_PICKS) return 65535;
+  portENTER_CRITICAL(&mux);
+  uint32_t at = slots[pick].okAt;
+  portEXIT_CRITICAL(&mux);
+  return at ? (millis() - at) / 1000 : 65535;
+}
 
 // The details cards need extras that cost memory to read, so they're only
 // asked for while a card is open: the first call fetches them right away.
@@ -232,7 +246,7 @@ static bool liveStep() {
   if (livePick < 0 || (int32_t)(ms - liveUntil) >= 0 || (int32_t)(ms - liveNextAt) < 0) return false;
   Game g;
   if (!netGame(livePick, g) || !g.id[0] || g.state == GS_NONE || g.state == GS_PRE) { liveNextAt = ms + 5000; return false; }
-  if (ESP.getMaxAllocHeap() < 70000) { liveNextAt = ms + 3000; return false; }
+  if (ESP.getMaxAllocHeap() < MIN_BLOCK) { liveNextAt = ms + 3000; return false; }
   static LiveInfo fresh;   // (not on the task's small stack)
   LiveCtx c{&g, &fresh};
   uint32_t t0 = millis();
@@ -287,7 +301,12 @@ static void netTask(void*) {
           (pick < 0 || (int32_t)(slots[i].nextAt - slots[pick].nextAt) < 0))
         pick = i;
     if (pick < 0) continue;
-    if (ESP.getMaxAllocHeap() < 70000) { delay(1000); continue; }   // not enough room for a download
+    if (ESP.getMaxAllocHeap() < MIN_BLOCK) {   // not enough room for a download: wait (restarting would clear it)
+      static uint32_t loggedAt = 0;
+      if (millis() - loggedAt > 30000) { loggedAt = millis(); mnLog("scores: waiting for memory (biggest block %u KB)", (unsigned)(ESP.getMaxAllocHeap() / 1024)); }
+      delay(1000);
+      continue;
+    }
 
     const League lg = TEAMS[slots[pick].team].league;
     const int group = TEAMS[slots[pick].team].group;
@@ -333,6 +352,7 @@ static void netTask(void*) {
           s.fails = 0;
           s.dayAt = newDay;
           s.nextAt = millis() + next;
+          s.okAt = millis() | 1;
           if (changed) version++;
           portEXIT_CRITICAL(&mux);
         }

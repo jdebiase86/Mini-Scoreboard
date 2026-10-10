@@ -170,10 +170,8 @@ static void openDetail(DetailKind k) {
   detKind = k;
   detailOpen(k);
   if (k == DK_TEAMS || k == DK_STATS || k == DK_PLAY) netWantDetails(shownPick);
-  Game g;
-  bool football = settings.npicks && netGame(shownPick, g) && (g.league == L_NFL || g.league == L_CFB);
-  // the game's own page: stats, leaders so far, the last play (football's last play is already here)
-  if (k == DK_TEAMS || k == DK_STATS || (k == DK_PLAY && !football)) netWantLive(shownPick);
+  // the game's own page: stats, leaders so far, the last play (it is ahead of the scoreboard's)
+  if (k == DK_TEAMS || k == DK_STATS || k == DK_PLAY) netWantLive(shownPick);
   setMode(M_DETAIL);
 }
 
@@ -321,6 +319,31 @@ static void handleSwipe(TouchEvent ev, int sx, int sy) {
   }
 }
 
+// Safety net: a live game that hasn't heard from ESPN for minutes means the downloads are stuck
+// (memory, Wi-Fi): kick the Wi-Fi first, then restart (which also clears a fragmented memory)
+static void watchdog() {
+  static uint32_t chk = 0, kicked = 0;
+  if (millis() - chk < 10000) return;
+  chk = millis();
+  if (WiFi.status() != WL_CONNECTED || !settings.npicks || millis() < 300000) return;
+  uint32_t worst = 0;
+  for (int i = 0; i < settings.npicks; i++) {
+    Game g;
+    if (netGame(i, g) && g.state == GS_LIVE) worst = max(worst, netAgeSecs(i));
+  }
+  if (worst > 180 && worst < 65535 && millis() - kicked > 120000) {
+    mnLog("watchdog: no live update for %u s - reconnecting Wi-Fi", (unsigned)worst);
+    kicked = millis();
+    WiFi.disconnect();
+    WiFi.reconnect();
+  }
+  if (worst > 420 && worst < 65535) {
+    mnLog("watchdog: no live update for %u s - restarting", (unsigned)worst);
+    delay(300);
+    ESP.restart();
+  }
+}
+
 // Carried somewhere else: with several remembered networks, look for one that's here
 static void roam() {
   static uint32_t offlineSince = 0, lastTry2 = 0;
@@ -375,6 +398,7 @@ void loop() {
   }
   batPoll();
   roam();
+  watchdog();
   bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || mode == M_TICKER || (mode == M_WIFI && !wifiBusy());
   if (idleScreen && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
     lcdBrightness(max(5, level() / 12));
@@ -457,6 +481,7 @@ void loop() {
       }
       playCardTick();
       uiBattery(false);
+      if (settings.npicks && known) playStale((int)netAgeSecs(shownPick), g);
       break;
     }
 

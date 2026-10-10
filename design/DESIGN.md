@@ -289,6 +289,14 @@ downloads fixed (the 44 KB is set aside before the connection, with a
 fallback, and the game page is never read uncompressed). Still open: the
 bigger layout change (everything shifted down, ticker on top) as pictures, and
 the battery calibration.
+Also in 0.7 (after Joe's screen stayed on old numbers for 10+ minutes while ESPN
+had moved on): the download guard wanted a 70 KB free block but the biggest
+block sits at 65-71 KB once logos have fragmented the memory, so score
+downloads could stop for good - now 48 KB, with a log line when it waits; an
+amber "OLD 2 min" tag in the top bar of a live game that hasn't heard from ESPN
+for 45 s; a watchdog (no update on a live game for 3 min: reconnect Wi-Fi; 7
+min: restart, which also clears the memory); football's last play comes from
+the game's own play list (the scoreboard feed's lastPlay lags during stoppages).
 
 ## Ideas for next (Oct 10, from Joe's first day with 0.5 / 0.6)
 - Dim screen: a little dimmer than now (it is still quite readable).

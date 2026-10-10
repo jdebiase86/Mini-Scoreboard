@@ -30,6 +30,7 @@ CAP = {
     "f01_home_in_top_bar": "0.7: HOME small, in the top bar",
     "f02_play_card_wider": "0.7: last-play card, full width *",
     "f03_ticker_tag": "0.7: tap the tag to pick a ticker *",
+    "f05_old_tag": "0.7: OLD tag when ESPN hasn't been heard from *",
     "f04_ticker_chooser": "0.7: ticker chooser *",
     "w08_forgot_current": "Forgot the network you're on",
     "e01_basketball_live": "Basketball live: score by quarter, LAST PLAY *",
