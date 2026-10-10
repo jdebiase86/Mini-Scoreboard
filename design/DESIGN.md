@@ -328,3 +328,20 @@ the game's own play list (the scoreboard feed's lastPlay lags during stoppages).
   a penalty-kick or free-throw flick, a reaction test. With the stylus: a
   drawing pad, minesweeper, sudoku, battleship. High scores kept in the board's
   settings. Sounds when the speaker is in.
+
+## Games page plan (Oct 10, Joe picked from the ideas; build when he says go)
+Wanted soon (family-friendly, works with no Wi-Fi, finger first and stylus
+optional): a GAMES tile after the favourites pages.
+- Penalty kick / free throw: flick to shoot; the flick's speed is the power and
+  its direction the aim. Kick: a power window, corners score more than the
+  middle, the goalie dives at random and gets better each level, a miss is wide
+  or over. Free throw: the arc must match the power; swish bonus; streak.
+- Memory match with the team logos already stored; levels get harder (2x3, 3x4,
+  4x4, 4x5, then a flip limit and a timer); leagues unlock as you go.
+- Sudoku: three difficulty levels, a number pad, mistakes marked, hints, notes,
+  and the game is kept if you leave. Puzzles made on the board.
+- More: snake, 2048, Simon with team colours (sounds with the speaker),
+  connect four against the board, sports trivia, reaction test, coin toss.
+- High scores and progress (levels, stars, unlocks) kept per game in the
+  board's settings. Needs a touch drag/flick reading (speed and angle) added to
+  mn_touch. Everything draws straight to the screen; no big buffers.
