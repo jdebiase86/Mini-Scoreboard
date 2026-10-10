@@ -46,19 +46,35 @@ for hx, hy in HOLES:      # new holes: 4.5 mm wide, 5 mm deep, down from the top
     hole = trimesh.creation.cylinder(radius=2.25, height=5.0 + 0.2, sections=48)
     hole.apply_translation([hx, hy, POST_TOP - 2.5 + 0.1])
     acc = acc - M(hole)
+# 1b. the USB opening (in the left end wall): the faceplate no longer has a notch, so the base opening alone is the hole. It was
+#     11.9 mm wide (y 24.6 to 36.5) and 6.45 mm deep from the rim; now 1 mm narrower each side and its floor 1.5 mm higher
+#     (9.9 x 4.95 mm, snug round the port). Only the wall itself (x -5 to -0.9) changes: the pocket behind it is left alone.
+def box(x0, x1, y0, y1, z0, z1):
+    b = trimesh.creation.box(extents=[x1 - x0, y1 - y0, z1 - z0]); b.apply_translation([(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2]); return M(b)
+USB_Y0, USB_Y1, USB_FLOOR, USB_NEW_FLOOR = 24.6, 36.5, -6.45, -4.95
+acc = acc + box(-5.0, -0.9, USB_Y0 - 0.05, USB_Y0 + 1.0, USB_FLOOR - 0.05, 0.0)       # the left side moves in 1 mm
+acc = acc + box(-5.0, -0.9, USB_Y1 - 1.0, USB_Y1 + 0.05, USB_FLOOR - 0.05, 0.0)       # the right side moves in 1 mm
+acc = acc + box(-5.0, -0.9, USB_Y0 - 0.05, USB_Y1 + 0.05, USB_FLOOR - 0.05, USB_NEW_FLOOR)   # the floor comes up 1.5 mm
 plain = acc
-# 2. stylus holder on the top (y = 66.15) long side, away from any stand: the stylus lies in a half-round
-#    groove cut into the wall (3.9 mm wide at the left end, 4.4 mm at the right, so it wedges tight as it is
-#    pushed in) and three small loops hold it in. Each loop sticks out only 4.2 mm and has 45-degree
-#    undersides, so it prints without supports. The stylus shows at both ends.
-YW, ZC0 = 66.15, BOT / 2 + 0.0        # wall face, mid-depth of the base
+# 2. stylus holder on the top long side (the y = 0 wall, so it is at the top when the unit is laid out): the stylus (86.87 mm
+#    long, 4.7 mm across) slides into a round groove cut into the wall until it stops against the closed end, and is then
+#    flush with the right end of the case. Three tube-shaped ribs, 26 mm apart and all inside the stylus's length, hold it
+#    snugly (4.9 mm bore). The ribs have 45-degree undersides, so the base prints without supports. The head end (the
+#    bump to put a fingernail under) stays in the clear stretch beyond the last rib.
+SL, SD = 86.87, 4.7
+YW, ZC0 = -5.0, BOT / 2 + 0.0        # wall face (the outer face of the y = 0 wall), mid-depth of the base
+CY = YW + 0.9                         # groove axis 0.9 mm inside the face: the stylus sticks out 1.45 mm, 1.65 mm of wall is left behind it
+XEND = 116.1                          # the right end face of the case
+XSTOP = XEND - SL - 0.4               # the closed end of the groove
+BORE_R = 2.45                         # 4.9 mm bore for the 4.7 mm stylus (printed holes come out a little smaller)
 def ring(x, r):
     t = np.linspace(0, 2 * np.pi, 48, endpoint=False)
-    return np.c_[np.full_like(t, x), YW + r * np.cos(t), ZC0 + r * np.sin(t)]
-bore = trimesh.convex.convex_hull(np.vstack([ring(-6.0, 1.95), ring(117.0, 2.2)]))
+    return np.c_[np.full_like(t, x), CY + r * np.cos(t), ZC0 + r * np.sin(t)]
+bore = trimesh.convex.convex_hull(np.vstack([ring(XSTOP, BORE_R), ring(XEND + 2.0, BORE_R)]))
+RIBS = ((40.0, 48.0), (66.0, 74.0), (92.0, 100.0))
 loops = []
-for x0, x1 in ((16, 24), (58, 66), (100, 108)):
-    pts = np.array([(YW - 1.0, ZC0 - 7.2), (YW + 4.2, ZC0 - 2.0), (YW + 4.2, ZC0 + 2.0), (YW - 1.0, ZC0 + 7.2)])
+for x0, x1 in RIBS:
+    pts = np.array([(YW + 1.0, ZC0 - 7.2), (YW - 4.2, ZC0 - 2.0), (YW - 4.2, ZC0 + 2.0), (YW + 1.0, ZC0 + 7.2)])
     verts = np.vstack([np.c_[np.full(4, x0), pts], np.c_[np.full(4, x1), pts]])
     loops.append(trimesh.convex.convex_hull(verts))
 with_tube = plain
@@ -85,6 +101,7 @@ pk = M(pocket)
 for hx, hy in HOLES: pk = pk - cyl(3.7, POCKET_TOP - 1, POCKET_TOP + DEEPER + 1, hx, hy)
 L = L - pk
 for hx, hy in HOLES: L = L - cyl(1.75, -1.0, 6.0, hx, hy) - cyl(2.79, 3.3, 6.0, hx, hy)
+L = L + box(-5.0, 6.1, USB_Y0 - 0.05, USB_Y1 + 0.05, -0.02, 1.0)   # no USB notch in the faceplate
 lid = tomesh(L); lid.export(os.path.join(OUT, "lid.stl"))
 print("base watertight", base.is_watertight, base_plain.is_watertight, "size", np.round(base.bounds[1] - base.bounds[0], 1).tolist())
 
@@ -100,8 +117,8 @@ for hx, hy in HOLES:
 pcb = trimesh.creation.box(extents=[110.6, 60.6, 1.61]); pcb.apply_translation([55.55, 30.575, -1.7 + 0.8])
 scr = trimesh.creation.box(extents=[94.6, 61.0, 2.9]); scr.apply_translation([55.55, 30.575, -0.1 + 1.45])
 def stylus(pull):
-    s = trimesh.creation.cylinder(radius=2.0, height=95, sections=32); s.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))
-    s.apply_translation([116.1 - 47.5 + pull, YW, ZC0]); return s
+    s = trimesh.creation.cylinder(radius=SD / 2, height=SL, sections=32); s.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))
+    s.apply_translation([XEND - SL / 2 + pull, CY, ZC0]); return s
 F = ImageFont.truetype("/usr/share/fonts/opentype/inter/Inter-Bold.otf", 22)
 def lab(im, t):
     c = Image.new("RGB", (im.width, im.height + 40), "white"); c.paste(im, (0, 40))
@@ -109,9 +126,9 @@ def lab(im, t):
 kw = dict(W=760, H=520, scale=5.0)
 lid_up = lid.copy(); lid_up.apply_translation([0, 0, 22])
 a = lab(render([(base, WHITE), (bat, BLUE), (spk, GREY)] + ins, elev=55, azim=-25, center=(55, 30, -12), **kw), "Base from above: battery (blue), speaker (grey)")
-b = lab(render([(base, WHITE), (stylus(18), RED)], elev=-50, azim=-25, center=(55, 30, -12), **kw), "Back: speaker grille (tube is on the far edge)")
-c = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(0), RED)], elev=22, azim=150, center=(55, 30, -9), **kw), "Closed, from the top edge: stylus parked")
-d = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(30), RED)], elev=30, azim=125, center=(55, 30, -9), **kw), "Stylus pulled out the right end")
+b = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(0), RED)], elev=22, azim=-30, center=(55, 30, -9), **kw), "Closed, top edge: stylus parked flush")
+c = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK), (stylus(-30), RED)], elev=30, azim=-55, center=(55, 30, -9), **kw), "Stylus slid out (it stops at the closed end)")
+d = lab(render([(base, WHITE), (lid, WHITE), (pcb, GREEN), (scr, DARK)], elev=12, azim=200, center=(0, 30, -6), **kw), "USB end: plain faceplate, snug opening")
 sheet = Image.new("RGB", (a.width * 2 + 30, a.height * 2 + 30), "white")
 for i, im in enumerate([a, b, c, d]): sheet.paste(im, ((i % 2) * (a.width + 30), (i // 2) * (a.height + 30)))
 sheet.save(os.path.join(OUT, "case_v1.png")); print("ok")
