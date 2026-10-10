@@ -383,3 +383,24 @@ mn_games.cpp), all drawing straight to the screen:
   (hosttest/test_games.sh, fuzz_games.sh); pictures in design/mini_stage5.png
   (render_games2.sh). Not tried on the board.
 - Sound: when the speaker is in (Simon and the shots first).
+
+## Next (Oct 10 night; nothing coded yet)
+- Upcoming-game screen: two big logos and the start time, one small line under
+  them; the stats (starters, leaders, records, stadium) move behind a tap
+  (a small DETAILS button, or tap the logos). The same on the home tile of an
+  upcoming game: logos and time, not a crowded list.
+- Bye week / no game: a home tile with the logo and "BYE WEEK" (football) or
+  "NO GAME TODAY" (other sports), and a full screen with the big logo, the team
+  name and its record when tapped. The mini keeps each favourite's logo path,
+  colour and name (in the board's settings) from the last time a game was in
+  the feed, so a team with no game still has its logo.
+- Battery: after the overnight charge, the flat top reading is "full"; correct
+  the reading with it. The charger lifts the reading (about 80 mV) and running
+  the screen and Wi-Fi sags it (about 50 mV); work both out from the plug-in /
+  unplug logs. Never let the percent rise while on battery; smooth it. There is
+  no ready-made library for load compensation (only fuel-gauge chips, which
+  this board lacks); the ESP32 reader is also known to be a few percent off per
+  chip, so a multimeter check of the battery plug is worth doing once.
+- Updates: the mini already checks at 4 AM and 3 minutes after start, plugged
+  in or not, when the Wi-Fi is up.
+- Wi-Fi paging arrows: bigger and higher.
