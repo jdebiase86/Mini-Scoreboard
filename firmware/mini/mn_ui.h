@@ -19,14 +19,14 @@ void uiBootHold(int secondsLeft);
 static const int HIT_AUTO = 100, HIT_MORE = 101, HIT_BACK = 102, HIT_EDIT = 103;   // EDIT: page 0 only
 int uiHomePages();                            // 1 or 2
 void uiHome(int page);
+void uiHomeRefresh(int page);                 // redraws just the tiles whose game changed
 void uiHomeClock(bool force);                 // redraws the clock when the minute changes
 int uiHomeHit(int page, int x, int y);
 void uiTileFlash(int page, int hit);          // brief outline when a tile is tapped
 
-// Placeholder game page (team = index into TEAMS, or -1 for AUTO) with HOME
-void uiTeam(int team);
+// The HOME button on game screens (bottom left)
+void uiHomeButton();
 bool uiHomeButtonHit(int x, int y);
-
 // Drawing helpers shared with the team picker (mn_picker.cpp)
 void uiText(FontId f, const String& s, int x, int y, uint16_t col, uint16_t bg, textdatum_t datum);
 void uiTile(int x0, int y0, int x1, int y1, uint16_t fill, uint16_t edge, int r = 14, int width = 1);

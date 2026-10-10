@@ -94,9 +94,9 @@ struct LoadedFont {
 };
 static LoadedFont loaded[F_COUNT];
 static const uint8_t* const FONT_DATA[F_COUNT] = {FONT_B12, FONT_B16, FONT_B18, FONT_B24,
-                                                  FONT_B36, FONT_S13, FONT_M12, FONT_M15};
+                                                  FONT_B36, FONT_S13, FONT_M12, FONT_M15, FONT_B62};
 static const uint32_t FONT_LEN[F_COUNT] = {sizeof(FONT_B12), sizeof(FONT_B16), sizeof(FONT_B18), sizeof(FONT_B24),
-                                           sizeof(FONT_B36), sizeof(FONT_S13), sizeof(FONT_M12), sizeof(FONT_M15)};
+                                           sizeof(FONT_B36), sizeof(FONT_S13), sizeof(FONT_M12), sizeof(FONT_M15), sizeof(FONT_B62)};
 
 void useFont(FontId f) {
   LoadedFont& lf = loaded[f];

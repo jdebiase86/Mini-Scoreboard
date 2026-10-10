@@ -2,6 +2,9 @@
 #include "mn_lcd.h"
 #include "mn_settings.h"
 #include "mn_version.h"
+#include "mn_net.h"
+#include "mn_play.h"
+#include "mn_game.h"
 #include <time.h>
 
 // ------------------------------------------------------------------ helpers
@@ -149,22 +152,10 @@ static void tileRect(int i, int& x0, int& y0, int& x1, int& y1) {
   y1 = y0 + 137;
 }
 
-static String shortName(int team) {   // "New York Giants" -> "Giants"
-  String n = TEAMS[team].name;
-  if (TEAMS[team].league == L_CFB) return n;
-  int sp = n.lastIndexOf(' ');
-  String last = sp > 0 ? n.substring(sp + 1) : n;
-  if (last == "Sox" || last == "Jays" || last == "Wings" || last == "Knights" || last == "Blazers") {
-    int sp2 = n.lastIndexOf(' ', sp - 1);
-    return n.substring(sp2 + 1);
-  }
-  return last;
-}
-
 static int lastMinute = -1;
 
 void uiHomeClock(bool force) {
-  time_t now = time(nullptr);
+  time_t now = mnTime();
   if (now < 1700000000) return;
   struct tm lt;
   localtime_r(&now, &lt);
@@ -181,23 +172,40 @@ void uiHomeClock(bool force) {
 }
 
 // What sits in each of a page's six slots: an index into settings.picks,
-// HIT_AUTO or HIT_MORE. Returns how many slots are used.
+// HIT_AUTO or HIT_MORE. Live games come first.
 int uiHomePages() { return settings.npicks > 5 ? 2 : 1; }
+
+static int order[MAX_PICKS];   // slot -> favourite, live ones first
+
+static void computeOrder() {
+  int n = 0;
+  for (int i = 0; i < settings.npicks; i++) {
+    Game g;
+    if (netGame(i, g) && g.state == GS_LIVE) order[n++] = i;
+  }
+  for (int i = 0; i < settings.npicks; i++) {
+    Game g;
+    if (!(netGame(i, g) && g.state == GS_LIVE)) order[n++] = i;
+  }
+}
 
 static int pageSlots(int page, int* slot) {
   int n = 0;
   if (uiHomePages() == 1) {
-    for (int i = 0; i < settings.npicks; i++) slot[n++] = i;
+    for (int i = 0; i < settings.npicks; i++) slot[n++] = order[i];
     slot[n++] = HIT_AUTO;
   } else if (page == 0) {
-    for (int i = 0; i < 5; i++) slot[n++] = i;
+    for (int i = 0; i < 5; i++) slot[n++] = order[i];
     slot[n++] = HIT_MORE;
   } else {
-    for (int i = 5; i < settings.npicks; i++) slot[n++] = i;
+    for (int i = 5; i < settings.npicks; i++) slot[n++] = order[i];
     slot[n++] = HIT_AUTO;
   }
   return n;
 }
+
+static uint32_t tileSig[6];
+static int tilePick[6];
 
 static void arrowIcon(int cx, int cy, uint16_t col) {   // a fat right arrow
   lcd.fillRoundRect(cx - 24, cy - 5, 34, 11, 4, col);
@@ -218,6 +226,8 @@ static void editButton() {
 
 void uiHome(int page) {
   if (page >= uiHomePages()) page = 0;
+  computeOrder();
+  for (int k = 0; k < 6; k++) tilePick[k] = -1;
   lcd.fillScreen(C_BG);
   uiHomeClock(true);
   if (page == 0) {
@@ -256,11 +266,35 @@ void uiHome(int page) {
       text(F_M12, sub, cx, y0 + 120, C_GREY, C_TILE_HI, middle_center);
     } else {
       int t = settings.picks[slot[k]];
-      tile(x0, y0, x1, y1, C_TILE, C_EDGE);
-      text(F_B36, TEAMS[t].abbr, cx, y0 + 50, C_WHITE, C_TILE, middle_center);   // the logo goes here next
-      text(F_B18, shortName(t), cx, y0 + 102, C_WHITE, C_TILE, middle_center);
-      text(F_S13, LEAGUE_NAMES[TEAMS[t].league], cx, y0 + 124, C_GREY, C_TILE, middle_center);
+      Game g;
+      bool known = netGame(slot[k], g);
+      playTile(x0, y0, x1, y1, t, g, known);
+      tileSig[k] = playTileSig(t, g, known);
+      tilePick[k] = slot[k];
     }
+  }
+}
+
+// Redraw only the tiles whose game changed (or that moved: a game going live
+// jumps to the front).
+void uiHomeRefresh(int page) {
+  if (page >= uiHomePages()) page = 0;
+  if (!settings.npicks) return;
+  computeOrder();
+  int slot[6];
+  int n = pageSlots(page, slot);
+  for (int k = 0; k < n; k++) {
+    if (slot[k] >= settings.npicks) continue;   // AUTO and MORE don't change
+    int t = settings.picks[slot[k]];
+    Game g;
+    bool known = netGame(slot[k], g);
+    uint32_t sig = playTileSig(t, g, known);
+    if (tilePick[k] == slot[k] && tileSig[k] == sig) continue;
+    int x0, y0, x1, y1;
+    tileRect(k, x0, y0, x1, y1);
+    playTile(x0, y0, x1, y1, t, g, known);
+    tileSig[k] = sig;
+    tilePick[k] = slot[k];
   }
 }
 
@@ -295,21 +329,10 @@ void uiTileFlash(int page, int hit) {
   delay(90);
 }
 
-// -------------------------------------------------------- placeholder pages
+// ------------------------------------------------------------ HOME button
 static const int HB_X0 = 8, HB_Y0 = 274, HB_X1 = 116, HB_Y1 = 314;
 
-void uiTeam(int team) {
-  lcd.fillScreen(C_BG);
-  if (team < 0) {
-    autoIcon(240, 100, 34, C_WHITE, 6);
-    centre(F_B36, "AUTO", 170, C_WHITE);
-    centre(F_M15, "Goes through your teams, live games first.", 212, C_GREY);
-  } else {
-    centre(F_B36, TEAMS[team].abbr, 100, C_WHITE);
-    centre(F_B24, TEAMS[team].name, 150, C_WHITE);
-    centre(F_S13, LEAGUE_NAMES[team >= 0 ? TEAMS[team].league : 0], 182, C_GREY);
-  }
-  centre(F_M12, "Scores and the game screen come in the next update.", 240, C_DIM);
+void uiHomeButton() {
   tile(HB_X0, HB_Y0, HB_X1, HB_Y1, C_TILE, C_EDGE, 12);
   homeIcon(HB_X0 + 26, (HB_Y0 + HB_Y1) / 2, 12, C_WHITE, C_TILE);
   text(F_B16, "HOME", HB_X0 + 68, (HB_Y0 + HB_Y1) / 2 + 1, C_WHITE, C_TILE, middle_center);

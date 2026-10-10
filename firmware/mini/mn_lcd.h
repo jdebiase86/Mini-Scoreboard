@@ -32,5 +32,5 @@ uint16_t rgb(uint8_t r, uint8_t g, uint8_t b);
 extern uint16_t C_BG, C_TILE, C_TILE_HI, C_EDGE, C_WHITE, C_GREY, C_DIM, C_RED, C_GREEN, C_YELLOW,
     C_AUTO_BG, C_AUTO_EDGE, C_AUTO_INK;
 
-enum FontId { F_B12, F_B16, F_B18, F_B24, F_B36, F_S13, F_M12, F_M15, F_COUNT };
+enum FontId { F_B12, F_B16, F_B18, F_B24, F_B36, F_S13, F_M12, F_M15, F_B62, F_COUNT };
 void useFont(FontId f);
