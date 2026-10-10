@@ -552,6 +552,12 @@ called in the games, so live games are polled slowly and events go stale (45 s).
 screen for ~4 s (team logo, short words like "TOUCHDOWN - Team"), game keeps running, tap to dismiss; the big animation is skipped
 inside games; watch live favourites while a game is open (pause-safe: games with a timer should not be punished). Picture first.
 
+(8) Logo Match is too hard at level 9 (daughter): levels 8 and up all use the last row, 6 pairs in 11 moves and 35 s (best possible is 6
+moves), so it is nearly impossible. Fix: ease the limits (e.g. 14-16 moves, 50-60 s at 6 pairs), spread the squeeze over more levels,
+and then add the bigger boards as a ramp (more pairs with matching moves/seconds). Possible "skipped level": no bug found in the
+level counter (it adds 1 per win); level 1 -> 2 -> 3 change the board shape (6, 8, 12 cards) and level 4 adds a move limit, which can
+look like a jump. Ask which levels she saw; show a "Level N" banner before each deal to make it obvious.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
