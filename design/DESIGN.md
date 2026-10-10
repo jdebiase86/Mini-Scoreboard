@@ -502,6 +502,21 @@ hoop, for the field goal a side view with the ball arcing to big yellow posts (f
 win use the same pieces. Sparks never draw over the logo and words (a protected box), and rubbing out never touches it. Pictures:
 design/mini_fx_big.png. The banners (rays, stripes, tape, bricks) are unchanged.
 
+## Feedback on 0.13 (Joe, Oct 11; to fix in the next update, nothing coded yet)
+Joe's photos of the real screen (Try the animations: field goal, three, win):
+- The stage that should be black / dark navy shows as bright blue, and the plates behind the words as a darker blue; the court looks
+  washed-out blue-grey. Check how colours are given to fillScreen / fillRect (uint16_t raw vs rgb565_t) and the colour mode; ask Joe
+  whether the red goal strobe and the touchdown look right.
+- The logo did not draw (letters NYG): the 112 px logo is not stored until a game screen has asked for it. Use a stored size, or fetch
+  it ahead.
+- Confetti leaves ghost shapes behind (pieces not fully rubbed out, the pattern hangs round the logo). Erase with the exact colour or
+  draw confetti like the sparks.
+- Three: the ball does not go through the basket (it ends beside / below the net). Aim at the middle of the rim, drop through, and draw
+  the net over the ball.
+- Home run: make it look like the LED board's baseball diamond (sb_fx.cpp drawPark): seen from behind home plate, sky with light
+  towers, crowd, wall with a yellow line and foul poles, striped grass, the dirt diamond with bases and mound, chalk foul lines, the
+  batter at the plate, the ball flying up over the wall.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
