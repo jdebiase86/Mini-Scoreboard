@@ -1,5 +1,5 @@
-// Draws the games (0.8): the real game code, driven with taps, swipes and flicks.
-// (old note: Draws the screens added in 0.5 with the real firmware code: battery icon,
+// Draws the 0.10 screens (cleaner upcoming game, bye week) with the real firmware code. Pictures go to out/p_*.ppm.
+// (was: the screens added in 0.5 with the real firmware code: battery icon,
 // Wi-Fi button, the Wi-Fi list and keyboard, and the details cards (from real
 // ESPN feeds with the extras). Pictures go to out/n_*.ppm.
 //   ./render_new.sh   -> design/mini_stage3.png
@@ -15,7 +15,6 @@
 #include "../mini/mn_wifi.h"
 #include "../mini/mn_battery.h"
 #include "../mini/mn_live.h"
-#include "../mini/mn_games.h"
 #include <WiFi.h>
 #include <stdio.h>
 
@@ -23,7 +22,6 @@ Settings settings;
 time_t mnNow;
 static uint32_t fakeMs = 1000;
 uint32_t millis() { return fakeMs; }
-static void adv(uint32_t ms) { fakeMs += ms; }
 void delay(uint32_t) {}
 void mnLog(const char*, ...) {}
 FakeWiFi WiFi;
@@ -33,7 +31,8 @@ String teamKey(int i) { return String(LK[TEAMS[i].league]) + ":" + TEAMS[i].abbr
 
 static Game fakeG[MAX_PICKS];
 static bool fakeK[MAX_PICKS];
-bool netTeamSide(int, TeamSide&) { return false; }
+static TeamSide fakeSide[MAX_PICKS];
+bool netTeamSide(int p, TeamSide& out) { if (p < 0 || p >= MAX_PICKS || !fakeSide[p].logo[0]) return false; out = fakeSide[p]; return true; }
 bool netGame(int p, Game& out) { if (p < 0 || p >= MAX_PICKS || !fakeK[p]) return false; out = fakeG[p]; return true; }
 uint32_t netVersion() { return 1; }
 void netWantDetails(int) {}
@@ -72,7 +71,7 @@ static bool lookup(int team, Game& g) {
 
 static void save(const char* name) {
   char path[256];
-  snprintf(path, sizeof(path), "out/n_%s.ppm", name);
+  snprintf(path, sizeof(path), "out/p_%s.ppm", name);
   FILE* f = fopen(path, "wb");
   fprintf(f, "P6\n%d %d\n255\n", SCREEN_W, SCREEN_H);
   static lgfx::rgb888_t line[SCREEN_W];
@@ -83,36 +82,49 @@ static void save(const char* name) {
   fclose(f);
 }
 
+static int idx(const char* key) {
+  for (int i = 0; i < settings.npicks; i++) if (teamKey(settings.picks[i]) == key) return i;
+  fprintf(stderr, "no favourite %s\n", key);
+  return 0;
+}
 
+// what the game's own page told us (real pages, trimmed: feeds/summary_*.json)
+static LiveInfo liveFor(int pick, const char* league) {
+  static LiveInfo li;
+  char path[80];
+  snprintf(path, sizeof(path), "feeds/summary_%s.json", league);
+  FileSource src(path);
+  li = LiveInfo();
+  if (src.f) liveParse(src, fakeG[pick], li);
+  return li;
+}
 
-static void frames(int n, int ms = 25) { for (int i = 0; i < n; i++) { adv(ms); gamesLoop(); } }
+static void showDetail_unused() {}
+
 int main() {
+  setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
+  tzset();
   setenv("MN_LOGOS", "logos", 1);
   mnNow = espnParseTime("2026-10-10T16:00Z");
-  srand(5);
   lcd.setColorDepth(16);
   lcd.createSprite(SCREEN_W, SCREEN_H);
   settings.setPicksFromString("NFL:DAL,NFL:JAX,CFB:IOWA,MLB:CLE,NHL:DET,NBA:DAL");
   for (int i = 0; i < settings.npicks; i++) { fakeK[i] = true; lookup(settings.picks[i], fakeG[i]); }
-  long taps = 0;
-  for (int page = 0; page < 2; page++) {
-    for (int slot = 0; slot < 6; slot++) {
-      gamesMenu();
-      if (page) gamesMenuSwipe(T_SWIPE_LEFT);
-      int col = slot % 3, row = slot / 3;
-      if (page == 1 && slot > 4) break;
-      gamesMenuTap(6 + col * 158 + 70, 40 + row * 140 + 60);
-      for (int i = 0; i < 6000; i++) {
-        int k = rand() % 10;
-        int x = rand() % 480, y = 40 + rand() % 280;   // (not the BACK button)
-        if (k < 5) { gamesTap(x, y); taps++; }
-        else if (k < 7) { TouchGesture g; g.x0 = rand() % 480; g.y0 = rand() % 320; g.x1 = rand() % 480; g.y1 = rand() % 320; g.ms = 1 + rand() % 400; gamesGesture(g); }
-        else if (k < 8) gamesSwipe((TouchEvent)(2 + rand() % 4));
-        else frames(1 + rand() % 6, 10 + rand() % 400);
-      }
-      gamesTap(10, 10);
-    }
-  }
-  printf("fuzz finished: %ld taps, no crash\n", taps);
+  settings.nets[0] = {"Home Wi-Fi", "x"}; settings.nnets = 1; settings.ssid = "Home Wi-Fi";
+  int dal = idx("NFL:DAL"), jax = idx("NFL:JAX"), iowa = idx("CFB:IOWA"), cle = idx("MLB:CLE"), det = idx("NHL:DET"), mav = idx("NBA:DAL");
+  bPct = 72;
+  for (int i = 0; i < settings.npicks; i++) fakeSide[i] = fakeG[i].mine();
+  // upcoming games, as they are today
+  playGame(settings.picks[jax], fakeG[jax], true, -1, PG_OPEN); save("p01_upcoming_football");
+  playGame(settings.picks[cle], fakeG[cle], true, 11, PG_OPEN); save("p02_upcoming_baseball_auto");
+  Game soon = fakeG[jax]; soon.start = mnNow + 2 * 3600 + 15 * 60; soon.det.has = true;
+  playGame(settings.picks[jax], soon, true, -1, PG_OPEN); save("p03_upcoming_soon");
+  Game mid = soon; mnNow += 30 * 60; playGame(settings.picks[jax], mid, true, -1, PG_DYN); save("p04_upcoming_soon_30min_later"); mnNow -= 30 * 60;
+  Game cfb = fakeG[iowa]; playGame(settings.picks[iowa], cfb, true, -1, PG_OPEN); save("p05_upcoming_college");
+  // bye week: no game found
+  Game none = Game(); fakeG[dal] = none; fakeG[mav] = none;
+  playGame(settings.picks[dal], none, true, -1, PG_OPEN); save("p06_bye_week_football");
+  playGame(settings.picks[mav], none, true, -1, PG_OPEN); save("p07_no_game_basketball");
+  uiHome(0); save("p08_home_with_bye_tiles");
   return 0;
 }

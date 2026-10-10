@@ -384,7 +384,46 @@ mn_games.cpp), all drawing straight to the screen:
   (render_games2.sh). Not tried on the board.
 - Sound: when the speaker is in (Simon and the shots first).
 
-## Next (Oct 10 night; nothing coded yet)
+## v0.10 (Oct 10/11, not yet tried on the board)
+Fixes (from Joe's logs of 0.9):
+- Scores froze for six minutes while two big logos were saved over and over:
+  making room for one 112 px logo deleted every other 112 px logo (including
+  the one just saved), so each fetch undid the other. Now the six logos saved
+  most recently and any logo waiting to be fetched are never deleted; other
+  big logos go first, then any other unprotected one; with no room it gives
+  up for 10 minutes instead of looping. The net task also does at most two
+  logo fetches in a row before looking at scores.
+- Sudoku restarted the board while "Making a puzzle": the search recursed
+  deeper than the 8 KB loop stack. The board no longer makes puzzles: it mixes
+  one of 24 ready-made puzzles per level (mn_sudoku_bank.h, made by
+  hosttest/make_sudoku_bank.sh, each with exactly one answer) by renaming the
+  digits and shuffling rows, columns, bands and stacks (and turning the grid):
+  billions of different-looking games, ~13 KB of flash, nothing heavy at run
+  time. test_games.sh sudoku checks 300 mixed puzzles per level (all unique
+  answers).
+- Snake best score is saved the moment it is beaten (it was only saved at game
+  over).
+- False charging bolt: a 40 mV jump up now has to hold for a minute (and the
+  rise has to stay) before it counts as charging; the 5 minute trend rules are
+  8 mV up / 4 mV down; the shown percentage moves one point at a time (every
+  15 s), so a wrong guess never swings it 16 points.
+- Wi-Fi list: the previous / next page arrows have a wider touch area.
+New:
+- Upcoming game screen: cleaner (design/mini_stage6.png): the logos moved down,
+  name and record under each with a bar in the team colour, the date, a big
+  time and one small line (a countdown within 12 hours, else the stadium); no
+  starters / leaders on the screen. A GAME DETAILS button (bottom left) opens
+  the details card, as tapping the screen already did.
+- Bye week / no game: each favourite's logo, colour and name from its last game
+  are kept in flash (namespace "teams", written only when they change). A team
+  with no game shows its own logo with BYE WEEK (football) or NO GAME (other
+  sports) on the home tile and the game screen.
+
+Still to do: battery calibration (needs Joe's overnight and plug-in logs),
+animations (touchdown burst etc., design/mini_mockups.png no. 5), more games
+(Breakout, Whack-a-mole, football drill ...), sound.
+
+## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
   (a small DETAILS button, or tap the logos). The same on the home tile of an
