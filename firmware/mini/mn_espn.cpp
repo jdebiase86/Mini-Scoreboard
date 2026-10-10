@@ -275,6 +275,12 @@ bool espnFind(const JsonDocument& doc, int team, time_t now, Game& out) {
       if (i == mine) g.mineHome = home;
     }
     if (g.state == GS_LIVE && (g.league == L_NFL || g.league == L_CFB)) fillFootball(g, e["competitions"][0]["situation"]);
+    else if (g.state == GS_LIVE && g.league == L_MLB) {   // baseball: only the last play (home runs)
+      JsonObjectConst lp = e["competitions"][0]["situation"]["lastPlay"];
+      scopy(g.fb.playId, lp["id"] | "");
+      const char* t = lp["text"] | "";
+      scopy(g.fb.play, t);
+    }
     if (doc["rich"] | false) fillDetails(g, e["competitions"][0], cps);
     // live beats everything; then a final from the last day and a half;
     // then the next one to start; then an older final

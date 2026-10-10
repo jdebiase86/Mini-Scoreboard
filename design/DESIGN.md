@@ -462,6 +462,38 @@ Next: score alerts, idle clock, what's new screen, next five games, friends mode
 dots and boxes, checkers, air hockey, tap duels, with "Who's playing?" names and a tally per pair); battery calibration once
 the history has a full charge and a plug-in.
 
+## Animations and always-on (Oct 11, Joe: build them; mock-ups design/mini_anims.png, mock_anim.py)
+Joe wants all of them: the nine play banners (design/mini_plays.png), the red zone pop-ups (mini_redzone_opp.png: ours red,
+theirs caution tape), and for big moments sunbursts that are not overdone. Added in the mock-up: the field goal (kick
+lined up, ball in the air, through the uprights with IT'S GOOD!, NO GOOD wide right with caution tape), touchdown, their
+touchdown (caution tape), hockey goal (red goal lights), home run, final win (confetti). Rule: good for us = bright team
+colours and rays; bad (they score, we turn it over, a missed kick) = black caution tape. Sound comes later (the speaker is
+in the mail): touchdown horn, goal horn, crowd, kick thud.
+Dim on battery: stays fully bright while a game is live on the screen (setting: do not dim during a live game on
+battery), otherwise dims after a minute; the dim level goes from level/12 to about level/25 (a fifth as bright).
+Detecting moments: ESPN's last-play text, score changes and down / possession changes; a moment can be missed if two
+happen between checks (live checks every 5 s, 8 s in data saver).
+
+## v0.12: animations, dimmer screen (Oct 11, not yet tried on the board)
+Ported from the big LED board's rules (Scoreboard repo, sb_events.cpp): the mini compares each new look at a favourite's game
+with the look before (only one under 3.5 minutes old counts, so old points never set one off), and queues what changed (up to
+4, dropped if older than 45 s when the screen gets to them). mn_events.cpp (rules; hosttest/test_events.cpp checks 33 cases),
+mn_fx.cpp (the pictures). A tap on the screen ends an animation. Good news = team colours and rays; bad news = caution tape.
+- Ours: TOUCHDOWN (6+ points), FIELD GOAL (3: the kick, the ball through the uprights, IT'S GOOD!), GOAL, HOME RUN / GRAND SLAM / RUN
+  (baseball: ESPN's last play text, now also read for MLB), THREE, WIN ("GIANTS WIN", "FLORIDA WINS", confetti), KICKOFF,
+  HALFTIME / END OF A QUARTER / INTERMISSION card, FIRST DOWN, PICKED OFF!, FUMBLE!, SACKED!, STOPPED!, STONEWALLED!, WENT FOR IT!,
+  PUNT-ASTIC!, NO PUNT INTENDED, FLAG (the foul from the play text).
+- Theirs, in caution tape: their touchdown / field goal / goal / home run, TURNOVER (we throw it away), NO GOOD (our kick misses;
+  when theirs misses it is a bright banner).
+- The setup page (mini.local) has "Try the animations": a button for each one.
+- Data: a live game that nobody is watching is checked every 15 s (30 s in data saver) instead of 5 s (8 s); the screen tells the
+  net task what it shows (home and ticker: every favourite; a game screen or card: that one), and a dimmed screen watches nothing.
+- Screen: dims to level / 25 (at least 3) instead of level / 12; it does not dim while a live game is being watched (a live
+  favourite on the home or ticker screen, or the live game on screen), on the battery; "Always dim when idle" still dims. A
+  moment wakes the screen.
+- Pictures: design/mini_fx.png (frames of every animation, drawn by the real code: hosttest/render_fx.sh).
+- Sound later: the hooks would go where fxStart is called (touchdown horn, goal horn, crowd, kick thud).
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap

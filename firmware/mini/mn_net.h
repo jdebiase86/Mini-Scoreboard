@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "mn_game.h"
 #include "mn_live.h"
+#include "mn_fx.h"
 
 void netStart();                        // once Wi-Fi is up (and the clock set)
 void netPicksChanged();                 // the favourites were edited: start over
@@ -22,6 +23,10 @@ bool mnWifiUp();                        // joined to a network right now
 // arrived (false = nothing yet).
 void netWantLive(int pick);
 bool netLive(int pick, LiveInfo& out);
-bool netSaverOn();                    // the data saver is on (a phone hotspot, or switched on)
+bool netSaverOn();
+bool netTakeFx(FxSpec& out);   // something just happened in a favourite's game: the next animation (false = none)
+bool netTestFx(const char* name);    // queue a test animation ("touchdown", "nogood" ...); false = unknown name
+void netWatch(int pick);             // favourite `pick` is on screen: live games are checked often
+void netWatchAll();                    // the data saver is on (a phone hotspot, or switched on)
 uint32_t netAgeSecs(int pick);        // seconds since favourite `pick` last got a good answer (65535 = never)
 uint32_t netMemWaitSecs();           // how long the downloads have been waiting for memory (0 = not)

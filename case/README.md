@@ -70,3 +70,10 @@ in the designer's files. The designer's holes are filled in and new ones cut so 
 exactly (bottom edge level, left edge upright, solved in build_case.py), centred on the old centre, in both base and lid (the lid keeps a thin collar around each
 screw-head recess). The lid's screen pocket is 1.0 mm deeper (ceiling z 3.0 to 4.0, front lip 1.2 mm) so
 the screen face sits flush. The stylus holder stays on the same side for now.
+
+Draft 7 (Oct 11): the USB opening and the stylus holder, from Joe's fit checks. The faceplate no longer has a USB notch
+(it printed full). The base's wall notch (11.95 x 6.5 mm) is 1 mm narrower each side and its floor 1.5 mm higher: 9.9 x 4.95 mm,
+snug round the port; the pocket behind the wall is untouched. The stylus holder moved to the y = 0 long side (the top when
+the unit is laid out), for an 86.87 x 4.7 mm stylus: a 4.9 mm round groove from the right end face to a closed stop 87.3 mm
+in (the stylus parks flush with the end), three ribs 26 mm apart (x 40-48, 66-74, 92-100) all inside its length, with the
+stretch beyond the last rib left clear so the stylus's bump can be hooked with a fingernail.

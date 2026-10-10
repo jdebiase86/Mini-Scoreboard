@@ -9,6 +9,7 @@
 // on the board yet; it has been asked for, and the caller shows the team's
 // letters until logoVersion() changes.
 bool logoDraw(const TeamSide& t, int cx, int cy, int size, uint16_t bg);
+bool logoDrawOver(const TeamSide& t, int cx, int cy, int size, uint16_t bg);   // same, over a picture (see mn_logo.cpp)
 uint32_t logoVersion();
 
 #ifndef MN_HOST

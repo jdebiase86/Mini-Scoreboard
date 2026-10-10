@@ -28,9 +28,10 @@
 #include "mn_log.h"
 #include "mn_diag.h"
 #include "mn_about.h"
+#include "mn_fx.h"
 #include "mn_version.h"
 
-enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER, M_GAMES, M_GAME, M_ABOUT };
+enum Mode { M_SETUP, M_CONNECTING, M_FALLBACK, M_CONNECTED, M_HOME, M_TEAM, M_PICK, M_WIFI, M_DETAIL, M_TICKER, M_GAMES, M_GAME, M_ABOUT, M_FX };
 static Mode mode = M_SETUP;
 static uint32_t modeAt = 0, lastTry = 0;
 static bool dirty = true;
@@ -43,6 +44,7 @@ static int tickerLeague = -1;   // AUTO rotates through this league's teams only
 static int homePage = 0;     // M_HOME: 0, or 1 for the teams past the fifth
 static Mode wifiFrom = M_HOME;       // M_WIFI: where BACK goes
 static Mode aboutFrom = M_HOME;      // M_ABOUT: where BACK goes
+static Mode fxFrom = M_HOME;         // M_FX: the screen to go back to when the animation is over
 static DetailKind detKind = DK_TEAMS; // M_DETAIL: which card
 static uint32_t detSig = 0;
 static bool holdCardAfter = false;   // back from the last-play details: show that card again for a few seconds
@@ -203,6 +205,7 @@ static AboutData aboutData() {
 }
 
 static void handleTap(int x, int y) {
+  if (mode == M_FX) { fxStop(); setMode(fxFrom); return; }   // a tap ends the animation
   // the battery at the top right of the home and game screens opens the About page
   if ((mode == M_HOME || mode == M_TEAM) && x >= 392 && y < 34) { aboutFrom = mode; setMode(M_ABOUT); return; }
   switch (mode) {
@@ -327,6 +330,7 @@ static int autoPick(int from) {
 //   team picker list: up / down for the next / previous page
 //   (later: a pop-up card swiped away)
 static void handleSwipe(TouchEvent ev, int sx, int sy) {
+  if (mode == M_FX) { fxStop(); setMode(fxFrom); return; }
   switch (mode) {
     case M_HOME:
       if (ev == T_SWIPE_LEFT && homePage == 0 && uiHomePages() > 1) { homePage = 1; dirty = true; }
@@ -471,11 +475,36 @@ void loop() {
   }
   roam();
   watchdog();
+  // something just happened in a favourite's game: its animation (it wakes the screen, then it dims again later)
+  if (mode == M_HOME || mode == M_TEAM || mode == M_DETAIL || mode == M_TICKER || mode == M_ABOUT) {
+    FxSpec fx;
+    if (netTakeFx(fx)) {
+      if (dimmed) { lcdBrightness(level()); dimmed = false; }
+      fxFrom = mode == M_ABOUT ? M_HOME : mode;
+      fxStart(fx);
+      mode = M_FX;
+      modeAt = millis();
+    }
+  }
+  // who is being looked at, so a live game nobody is watching is asked about less often
+  if (!dimmed) {
+    if (mode == M_HOME || mode == M_TICKER || mode == M_FX) netWatchAll();
+    else if (mode == M_TEAM || mode == M_DETAIL) netWatch(shownPick);
+  }
+  // watching a live game on the battery: the screen stays as it is
+  bool watchingLive = false;
+  if (mode == M_TEAM || mode == M_DETAIL || mode == M_HOME || mode == M_TICKER) {
+    for (int i = 0; i < settings.npicks && !watchingLive; i++) {
+      if ((mode == M_TEAM || mode == M_DETAIL) && i != shownPick) continue;
+      Game g;
+      if (netGame(i, g) && g.state == GS_LIVE) watchingLive = true;
+    }
+  }
   bool idleScreen = mode == M_HOME || mode == M_TEAM || mode == M_PICK || mode == M_DETAIL || mode == M_TICKER || mode == M_ABOUT || (mode == M_WIFI && !wifiBusy());
-  bool mayDim = settings.dimMode == 1 || (settings.dimMode == 0 && !batCharging() && !(batPresent() && batMilliVolts() >= 4150));
+  bool mayDim = settings.dimMode == 1 || (settings.dimMode == 0 && !batCharging() && !(batPresent() && batMilliVolts() >= 4150) && !watchingLive);
   if (!mayDim && dimmed) { lcdBrightness(level()); dimmed = false; }   // plugged in: wake up
   if (idleScreen && mayDim && !dimmed && millis() - touchLastActivity() > DIM_AFTER_MS && millis() - modeAt > DIM_AFTER_MS) {
-    lcdBrightness(max(5, level() / 12));
+    lcdBrightness(max(3, level() / 25));
     dimmed = true;
   }
 
@@ -579,6 +608,10 @@ void loop() {
 
     case M_WIFI:
       wifiLoop();
+      break;
+
+    case M_FX:
+      if (!fxStep()) setMode(fxFrom);   // over: the screen it came from, drawn again
       break;
 
     case M_ABOUT: {
