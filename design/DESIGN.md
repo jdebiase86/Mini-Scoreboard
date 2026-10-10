@@ -537,6 +537,12 @@ Arkansas is not a favourite, so its logo is not stored; fetch the opposing team'
 only until it arrives. (3) Memory: give back some without losing anything (log ring 60 x 120 B = 7 KB, the spark / queue / about
 buffers, the games' statics; target the biggest free block back to 63 KB).
 
+More from Joe (Oct 11): (1) name entry when a game's high score is set (top 5 per game, last name prefilled, clear-scores button); picture first.
+(2) Penalty Kick is too easy: the keeper dives away from the shot side 2 times in 3 even on a centre shot (mn_g_shoot.cpp ~line 182),
+so shooting down the middle nearly always scores. Fix: when the keeper has not "guessed", pick a side at random (and sometimes stay
+central), scale the guess chance up with level, and make the keeper reach wider. (3) Rename "Cheer Simon" to "Simon" (title bar,
+game list, GAME_SIMON name). (4) Basket Toss icon: the flyer pokes out above the tile; lower or shrink it.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
