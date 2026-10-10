@@ -14,6 +14,8 @@ bool netGame(int pick, Game& out);
 // A details card for favourite `pick` is open: also read the extras (leaders,
 // score by period, starters, stadium) for a while. Call it when the card opens.
 void netWantDetails(int pick);
+// The favourite's own logo, colour and name as of its last game (kept in flash). false = never seen a game.
+bool netTeamSide(int pick, TeamSide& out);
 bool mnWifiUp();                        // joined to a network right now
 // The live page of favourite `pick` (team stats, leaders so far, last play):
 // call netWantLive while a card that needs it is open; netLive gives what has

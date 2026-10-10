@@ -1,6 +1,9 @@
-// Makes puzzles with mn_g_sudoku.cpp's maker and checks each has exactly one answer.
+// Mixes puzzles from the bank (as the board does) and checks each has exactly one answer.
 #include "../mini/mn_settings.h"
+#include "sudoku_maker.h"
 #include "../mini/mn_g_sudoku.cpp"
+#include <set>
+#include <string>
 #include <stdio.h>
 #include <chrono>
 Settings settings;
@@ -20,7 +23,8 @@ int main() {
   for (int level = 0; level < 3; level++) {
     int bad = 0, total = 0, givensSum = 0;
     double worst = 0, sum = 0;
-    for (int n = 0; n < 40; n++) {
+    std::set<std::string> seen;
+    for (int n = 0; n < 300; n++) {
       uint8_t sol[81], puz[81];
       auto t0 = std::chrono::steady_clock::now();
       sdk::makePuzzle(level, sol, puz);
@@ -31,7 +35,8 @@ int main() {
       if (!valid(sol)) bad++;
       if (sdk::countSolutions(puz) != 1) bad++;
       givensSum += givens; total++;
+      seen.insert(std::string((char*)puz, 81));
     }
-    printf("level %d: %d puzzles, %d problems, avg givens %.1f, avg %.1f ms, worst %.0f ms\\n", level, total, bad, givensSum / (double)total, sum / total, worst);
+    printf("level %d: %d puzzles (%d different), %d problems, avg givens %.1f, avg %.1f ms, worst %.0f ms\\n", level, total, (int)seen.size(), bad, givensSum / (double)total, sum / total, worst);
   }
 }

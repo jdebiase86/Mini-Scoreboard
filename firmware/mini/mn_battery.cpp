@@ -20,7 +20,9 @@ static const int RING = 30;              // five minutes of readings, one every 
 static int ring[RING];
 static int nring = 0, smooth = 0;
 static bool present = false, charging = false;
-static uint32_t lastAt = 0, loggedAt = 0;
+static uint32_t lastAt = 0, loggedAt = 0, pendingAt = 0;
+static bool pendingUp = false;
+static int pendingBase = 0;
 
 static int readMv() {
   uint32_t mv = 0;
@@ -45,7 +47,7 @@ void batPoll() {
   lastAt = ms ? ms : 1;
   int mv = readMv();
   present = mv > 2500;                 // nothing plugged in: the pin floats low
-  if (!present) { nring = 0; smooth = 0; charging = false; return; }
+  if (!present) { nring = 0; smooth = 0; charging = false; pendingUp = false; return; }
   if (nring < RING) ring[nring++] = mv;
   else { memmove(ring, ring + 1, sizeof(int) * (RING - 1)); ring[RING - 1] = mv; }
   smooth = smooth ? (smooth * 3 + mv) / 4 : mv;
@@ -53,15 +55,24 @@ void batPoll() {
   //   plug in / unplug: a jump of 40 mV or more within half a minute
   //   a long slow climb (a charge) or fall (running on the battery): 6 mV over five minutes
   //   at the top (4.17 V or more): still on the charger
-  if (nring >= 4) {
+  //   (a jump up has to hold for a minute before it counts: Wi-Fi and games make the voltage sag and
+  //   spring back, which used to show the bolt on an unplugged unit)
+  if (nring >= 10) {
     int jump = ring[nring - 1] - ring[nring - 4];
-    if (jump >= 40) charging = true;
-    else if (jump <= -40) charging = false;
+    int held = avg(nring - 5, 5) - avg(nring - 10, 3);          // the last 50 s against the readings before the step
+    if (jump <= -40) charging = false;
+    if (jump >= 40 && !pendingUp) { pendingUp = true; pendingAt = ms; pendingBase = ring[nring - 4]; }
+    if (pendingUp && ms - pendingAt >= 60000) {
+      pendingUp = false;
+      if (ring[nring - 1] - pendingBase >= 45 && held >= 30) charging = true;
+    }
+  } else if (nring >= 4) {
+    if (ring[nring - 1] - ring[nring - 4] <= -40) charging = false;
   }
   if (nring >= RING) {
     int slope = avg(RING - 5, 5) - avg(0, 5);
-    if (slope >= 6) charging = true;
-    else if (slope <= -6) charging = false;
+    if (slope >= 8) charging = true;
+    else if (slope <= -4 && smooth < 4150) charging = false;
   }
   if (smooth >= 4170) charging = true;
   if (ms - loggedAt > 60000) {         // for tuning on a real board: see mini.local/log
@@ -72,11 +83,19 @@ void batPoll() {
 
 bool batPresent() { return present; }
 // While charging the charger lifts the reading (80 mV or so, less near full), so take that off
+static int shown = -1;
+static uint32_t shownAt = 0;
 int batPercent() {
-  if (!present || !smooth) return -1;
+  if (!present || !smooth) { shown = -1; return -1; }
   int mv = smooth;
   if (charging) mv -= mv < 4120 ? 80 : (4200 - mv > 0 ? 4200 - mv : 0);
-  return batPercentFor(mv);
+  int p = batPercentFor(mv);
+  // the shown percentage moves one point at a time (every 15 s at most), so a wrong guess about charging never
+  // makes it jump
+  uint32_t now = millis();
+  if (shown < 0) { shown = p; shownAt = now; }
+  else if (p != shown && now - shownAt >= 15000) { shown += p > shown ? 1 : -1; shownAt = now; }
+  return shown;
 }
 bool batCharging() { return present && charging; }
 int batMilliVolts() { return smooth; }

@@ -383,3 +383,63 @@ mn_games.cpp), all drawing straight to the screen:
   (hosttest/test_games.sh, fuzz_games.sh); pictures in design/mini_stage5.png
   (render_games2.sh). Not tried on the board.
 - Sound: when the speaker is in (Simon and the shots first).
+
+## v0.10 (Oct 10/11, not yet tried on the board)
+Fixes (from Joe's logs of 0.9):
+- Scores froze for six minutes while two big logos were saved over and over:
+  making room for one 112 px logo deleted every other 112 px logo (including
+  the one just saved), so each fetch undid the other. Now the six logos saved
+  most recently and any logo waiting to be fetched are never deleted; other
+  big logos go first, then any other unprotected one; with no room it gives
+  up for 10 minutes instead of looping. The net task also does at most two
+  logo fetches in a row before looking at scores.
+- Sudoku restarted the board while "Making a puzzle": the search recursed
+  deeper than the 8 KB loop stack. The board no longer makes puzzles: it mixes
+  one of 24 ready-made puzzles per level (mn_sudoku_bank.h, made by
+  hosttest/make_sudoku_bank.sh, each with exactly one answer) by renaming the
+  digits and shuffling rows, columns, bands and stacks (and turning the grid):
+  billions of different-looking games, ~13 KB of flash, nothing heavy at run
+  time. test_games.sh sudoku checks 300 mixed puzzles per level (all unique
+  answers).
+- Snake best score is saved the moment it is beaten (it was only saved at game
+  over).
+- False charging bolt: a 40 mV jump up now has to hold for a minute (and the
+  rise has to stay) before it counts as charging; the 5 minute trend rules are
+  8 mV up / 4 mV down; the shown percentage moves one point at a time (every
+  15 s), so a wrong guess never swings it 16 points.
+- Wi-Fi list: the previous / next page arrows have a wider touch area.
+New:
+- Upcoming game screen: cleaner (design/mini_stage6.png): the logos moved down,
+  name and record under each with a bar in the team colour, the date, a big
+  time and one small line (a countdown within 12 hours, else the stadium); no
+  starters / leaders on the screen. A GAME DETAILS button (bottom left) opens
+  the details card, as tapping the screen already did.
+- Bye week / no game: each favourite's logo, colour and name from its last game
+  are kept in flash (namespace "teams", written only when they change). A team
+  with no game shows its own logo with BYE WEEK (football) or NO GAME (other
+  sports) on the home tile and the game screen.
+
+Still to do: battery calibration (needs Joe's overnight and plug-in logs),
+animations (touchdown burst etc., design/mini_mockups.png no. 5), more games
+(Breakout, Whack-a-mole, football drill ...), sound.
+
+## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
+- Upcoming-game screen: two big logos and the start time, one small line under
+  them; the stats (starters, leaders, records, stadium) move behind a tap
+  (a small DETAILS button, or tap the logos). The same on the home tile of an
+  upcoming game: logos and time, not a crowded list.
+- Bye week / no game: a home tile with the logo and "BYE WEEK" (football) or
+  "NO GAME TODAY" (other sports), and a full screen with the big logo, the team
+  name and its record when tapped. The mini keeps each favourite's logo path,
+  colour and name (in the board's settings) from the last time a game was in
+  the feed, so a team with no game still has its logo.
+- Battery: after the overnight charge, the flat top reading is "full"; correct
+  the reading with it. The charger lifts the reading (about 80 mV) and running
+  the screen and Wi-Fi sags it (about 50 mV); work both out from the plug-in /
+  unplug logs. Never let the percent rise while on battery; smooth it. There is
+  no ready-made library for load compensation (only fuel-gauge chips, which
+  this board lacks); the ESP32 reader is also known to be a few percent off per
+  chip, so a multimeter check of the battery plug is worth doing once.
+- Updates: the mini already checks at 4 AM and 3 minutes after start, plugged
+  in or not, when the Wi-Fi is up.
+- Wi-Fi paging arrows: bigger and higher.

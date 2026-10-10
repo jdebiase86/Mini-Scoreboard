@@ -100,6 +100,7 @@ void tick() {
   cell(nx, ny, rgb(120, 240, 150));
   if (eat) {
     score += 10;
+    if (score > best) { best = score; gPut("snake_best", best); }   // kept the moment it's beaten, even if you leave mid-game
     header();
     placeFood();
   }

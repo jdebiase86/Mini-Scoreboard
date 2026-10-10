@@ -58,3 +58,15 @@ shows at both ends. build_case.py writes base_plain.stl and base_final.stl (with
 (4.2 mm); none of its shape is used. Closed case about 24 mm thick, 75.3 mm wide
 with the loops. Print: base floor-down, lid face-down (flipped), PLA.
     python3 build_case.py <buttons base.stl> <lid.stl> <out folder>
+
+Draft 5 (Oct 10, after the first print): the speaker pocket's corner ribs sat on top of the RESET / BOOT
+fingers (the ribs started at x = 5.4 and the fingers' slits run to x = 12.5), so the buttons couldn't
+move. The speaker pocket now starts at x = 14.4 (speaker centre 29.5) and the battery moved to x = 78
+(it just fits between the speaker and the right wall: 67.6 mm for a 65 to 67 mm battery).
+
+Draft 6 (Oct 10, after fitting the board): the real board's four screw holes are 103.68 / 103.99 mm apart
+across and 53.36 / 53.54 mm up and down (centre to centre, metal inserts, no give), against 105.1 x 54.1
+in the designer's files. The designer's holes are filled in and new ones cut so all four measured distances come out
+exactly (bottom edge level, left edge upright, solved in build_case.py), centred on the old centre, in both base and lid (the lid keeps a thin collar around each
+screw-head recess). The lid's screen pocket is 1.0 mm deeper (ceiling z 3.0 to 4.0, front lip 1.2 mm) so
+the screen face sits flush. The stylus holder stays on the same side for now.

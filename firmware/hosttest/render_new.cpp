@@ -30,6 +30,7 @@ String teamKey(int i) { return String(LK[TEAMS[i].league]) + ":" + TEAMS[i].abbr
 
 static Game fakeG[MAX_PICKS];
 static bool fakeK[MAX_PICKS];
+bool netTeamSide(int, TeamSide&) { return false; }
 bool netGame(int p, Game& out) { if (p < 0 || p >= MAX_PICKS || !fakeK[p]) return false; out = fakeG[p]; return true; }
 uint32_t netVersion() { return 1; }
 void netWantDetails(int) {}

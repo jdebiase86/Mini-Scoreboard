@@ -314,9 +314,9 @@ WifiResult wifiTap(int x, int y) {
     case S_LIST: {
       if (x < 104 && y < 34) return WR_BACK;
       if (x >= 376 && y < 34) { if (!scanning) { scanTries = 0; note = ""; startScan(); wifiDraw(); } return WR_STAY; }
-      if (y >= 288 && pages() > 1) {
-        if (x >= 396 && x < 436) wifiSwipe(false);
-        else if (x >= 436) wifiSwipe(true);
+      if (y >= 289 && pages() > 1 && x >= 372) {   // a little wider than the arrows, so a near miss still turns the page
+        if (x < 437) wifiSwipe(false);
+        else wifiSwipe(true);
         return WR_STAY;
       }
       for (int k = 0; k < PER_PAGE; k++) {

@@ -93,19 +93,41 @@ static void want(const char* key, const TeamSide& t, int size) {
   portEXIT_CRITICAL(&mux);
 }
 
-// room for one more: first let go of the game-screen sizes (they come back
-// when a game is opened), then give up
-static bool makeRoom(size_t need) {
-  if (LittleFS.totalBytes() - LittleFS.usedBytes() > need + 8192) return true;
-  File root = LittleFS.open("/");
-  String doomed[16];
-  int n = 0;
-  for (File f = root.openNextFile(); f && n < 16; f = root.openNextFile()) {
-    String nm = f.name();
-    if (nm.endsWith("_112.png")) doomed[n++] = nm;
+// the logos saved most recently, and the ones about to be fetched, are never thrown out to make room
+// (two big logos used to throw each other out, again and again)
+static char recent[6][40];
+static int recentAt = 0;
+static void markRecent(const char* key) { strncpy(recent[recentAt++ % 6], key, 39); }
+static bool protectedKey(const String& nm, const char* saving) {
+  String k = nm.startsWith("/") ? nm.substring(1) : nm;
+  if (k.endsWith(".png")) k = k.substring(0, k.length() - 4);
+  if (k == saving) return true;
+  for (auto& r : recent) if (r[0] && k == r) return true;
+  bool hit = false;
+  portENTER_CRITICAL(&mux);
+  for (int i = 0; i < nwant; i++) if (k == wants[i].key) hit = true;
+  portEXIT_CRITICAL(&mux);
+  return hit;
+}
+
+// room for one more: first let go of game-screen sizes nobody needs right now, then any other logo that isn't
+// protected (they come back when drawn again), then give up
+static bool makeRoom(size_t need, const char* saving) {
+  auto enough = [&]() { return LittleFS.totalBytes() - LittleFS.usedBytes() > need + 8192; };
+  if (enough()) return true;
+  for (int pass = 0; pass < 2 && !enough(); pass++) {
+    String doomed[16];
+    int n = 0;
+    File root = LittleFS.open("/");
+    for (File f = root.openNextFile(); f && n < 16; f = root.openNextFile()) {
+      String nm = f.name();
+      if (!nm.endsWith(".png") || protectedKey(nm, saving)) continue;
+      if (pass == 0 && !nm.endsWith("_112.png")) continue;
+      doomed[n++] = nm;
+    }
+    for (int i = 0; i < n; i++) LittleFS.remove(doomed[i].startsWith("/") ? doomed[i] : "/" + doomed[i]);
   }
-  for (int i = 0; i < n; i++) LittleFS.remove(doomed[i].startsWith("/") ? doomed[i] : "/" + doomed[i]);
-  return LittleFS.totalBytes() - LittleFS.usedBytes() > need + 8192;
+  return enough();
 }
 
 static bool download(const String& path, int size, uint8_t* buf, size_t& n, int& code) {
@@ -162,17 +184,19 @@ bool logoFetchOne() {
     }
     mnTlsGive();
   }
-  if (ok && makeRoom(n)) {
+  bool room = ok && makeRoom(n, w.key);
+  if (ok && !room) { mnLog("logo %s: no room on the board", w.key); ok = false; code = -2; }
+  if (room) {
     String tmp = String(fn) + ".tmp";
     File f = LittleFS.open(tmp, "w");
     if (f) {
       bool wrote = f.write(buf, n) == n;
       f.close();
-      if (wrote) { LittleFS.remove(fn); LittleFS.rename(tmp, fn); version++; mnLog("logo %s saved (%u bytes)", w.key, (unsigned)n); }
+      if (wrote) { LittleFS.remove(fn); LittleFS.rename(tmp, fn); markRecent(w.key); version++; mnLog("logo %s saved (%u bytes)", w.key, (unsigned)n); }
       else LittleFS.remove(tmp);
     }
   } else if (!ok) {
-    mnLog("logo %s failed (HTTP %d)", w.key, code);
+    if (code != -2) mnLog("logo %s failed (HTTP %d)", w.key, code);
     portENTER_CRITICAL(&mux);
     static int fi = 0;
     strncpy(failed[fi & 7].key, w.key, 39);

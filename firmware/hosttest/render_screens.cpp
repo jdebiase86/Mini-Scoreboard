@@ -23,6 +23,7 @@ String teamKey(int i) { return String(LK[TEAMS[i].league]) + ":" + TEAMS[i].abbr
 void mnLog(const char*, ...) {}
 time_t mnNow;
 // no scores here: the home tiles show "Loading"
+bool netTeamSide(int, TeamSide&) { return false; }
 bool netGame(int, Game&) { return false; }
 uint32_t netVersion() { return 1; }
 bool mnWifiUp() { return true; }

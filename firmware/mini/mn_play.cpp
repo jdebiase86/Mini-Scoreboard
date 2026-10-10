@@ -4,6 +4,7 @@
 #include "mn_lcd.h"
 #include "mn_settings.h"
 #include "mn_detail.h"
+#include "mn_net.h"
 
 static void text(FontId f, const String& s, int x, int y, uint16_t col, uint16_t bg, textdatum_t d) {
   uiText(f, s, x, y, col, bg, d);
@@ -159,6 +160,13 @@ static bool mineWon(const Game& g) {
 }
 
 // ------------------------------------------------------------------- tile
+// the team's own logo, colour and name from its last game (for a bye week or a quiet spell)
+static bool sideOf(int team, TeamSide& s) {
+  for (int i = 0; i < settings.npicks; i++) if (settings.picks[i] == team) return netTeamSide(i, s);
+  return false;
+}
+static bool footballTeam(int team) { return leagueSport(TEAMS[team].league) == FOOTBALL; }
+
 void playTile(int x0, int y0, int x1, int y1, int team, const Game& g, bool known) {
   int cx = (x0 + x1) / 2;
   bool live = known && g.state == GS_LIVE;
@@ -166,6 +174,7 @@ void playTile(int x0, int y0, int x1, int y1, int team, const Game& g, bool know
   // the logo (ESPN's) when it's here, the letters until then
   bool haveLogo = false;
   if (known && g.state != GS_NONE) haveLogo = logoDraw(g.mine(), cx, y0 + 46, 76, C_TILE);
+  else if (known) { TeamSide s; haveLogo = sideOf(team, s) && logoDraw(s, cx, y0 + 46, 76, C_TILE); }
   if (!haveLogo) letters(TEAMS[team].abbr, cx, y0 + 46, F_B36, C_TILE);
   if (live) pill(x0 + 8, y0 + 8, "LIVE", C_RED, C_WHITE);
 
@@ -177,9 +186,11 @@ void playTile(int x0, int y0, int x1, int y1, int team, const Game& g, bool know
     bigFont = F_B16;
     smallCol = C_DIM;
   } else if (g.state == GS_NONE) {
-    big = "No game";
-    small = "coming up";
-    bigFont = F_B16;
+    bool bye = footballTeam(team);
+    big = bye ? "BYE WEEK" : "NO GAME";
+    small = bye ? "no game this week" : "none scheduled";
+    bigFont = F_B18;
+    smallCol = C_DIM;
   } else if (g.state == GS_LIVE) {
     big = String((int)g.mine().score) + " - " + String((int)g.them().score);
     bigFont = F_B24;
@@ -371,13 +382,27 @@ static void drawDynamic(const Game& g, bool partial) {
   bool fb = g.state == GS_LIVE && g.fb.has;
   bool rz = fb && g.fb.redzone;
   if (partial) {
-    lcd.fillRect(128, 50, 224, 126, C_BG);                      // the scores and the middle
-    lcd.fillRect(0, 176, 480, 70, C_BG);   // the field and win bar, or the area that stands in for them
+    lcd.fillRect(128, 50, 224, g.state == GS_PRE ? 140 : 126, C_BG);   // the scores and the middle
+    if (g.state != GS_PRE) lcd.fillRect(0, 176, 480, 70, C_BG);       // the field and win bar, or the area that stands in for them
   }
   if (g.state == GS_PRE) {
-    text(F_S13, startDate(g), 240, 70, C_GREY, C_BG, middle_center);
-    text(F_B36, startTime(g), 240, 102, C_WHITE, C_BG, middle_center);
-    drawBottom(g);
+    text(F_S13, startDate(g), 240, 80, C_GREY, C_BG, middle_center);
+    text(F_B36, startTime(g), 240, 114, C_WHITE, C_BG, middle_center);
+    long to = (long)(g.start - mnTime());
+    String line;
+    uint16_t lc = C_GREY;
+    if (to > 0 && to < 12 * 3600L) {
+      int mins = (int)((to + 59) / 60);
+      line = mins < 60 ? String("Starts in ") + String(mins) + " min" : String("Starts in ") + String(mins / 60) + "h " + String(mins % 60) + "m";
+      lc = C_YELLOW;
+    } else if (g.det.has && g.det.venue[0]) {
+      line = g.det.venue;
+    }
+    if (line.length()) {
+      useFont(F_S13);
+      while (line.length() > 4 && lcd.textWidth(line.c_str()) > 216) line = line.substring(0, line.length() - 1);
+      text(F_S13, line, 240, 148, lc, C_BG, middle_center);
+    }
     return;
   }
   // scores: big, or smaller when they run to three digits
@@ -522,9 +547,18 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
   }
   if (!known || g.state == GS_NONE) {
     if (mode != PG_DYN) uiBattery(true);
-    letters(TEAMS[team].abbr, 240, 100, F_B36, C_BG);
-    text(F_B24, TEAMS[team].name, 240, 150, C_WHITE, C_BG, middle_center);
-    text(F_M15, known ? "No game coming up" : "Getting the score...", 240, 190, C_GREY, C_BG, middle_center);
+    TeamSide s;
+    bool own = known && sideOf(team, s);
+    if (!own || !logoDraw(s, 240, 98, 112, C_BG)) letters(TEAMS[team].abbr, 240, 98, F_B36, C_BG);
+    text(F_B24, TEAMS[team].name, 240, 170, C_WHITE, C_BG, middle_center);
+    if (!known) text(F_M15, "Getting the score...", 240, 206, C_GREY, C_BG, middle_center);
+    else if (footballTeam(team)) {
+      text(F_B36, "BYE WEEK", 240, 218, C_YELLOW, C_BG, middle_center);
+      text(F_S13, "no game this week", 240, 252, C_GREY, C_BG, middle_center);
+    } else {
+      text(F_B24, "NO GAME", 240, 218, C_YELLOW, C_BG, middle_center);
+      text(F_S13, "none scheduled in the next week", 240, 248, C_GREY, C_BG, middle_center);
+    }
     return;
   }
   bool fb = g.state == GS_LIVE && g.fb.has;
@@ -550,13 +584,30 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     }
     uiBattery(true);
     // the two teams
-    if (!logoDraw(g.away, 70, 98, 112, C_BG)) letters(g.away.abbr, 70, 98, F_B36, C_BG);
-    if (!logoDraw(g.home, 410, 98, 112, C_BG)) letters(g.home.abbr, 410, 98, F_B36, C_BG);
-    String an = String(g.away.name), hn = String(g.home.name);
-    if (g.away.rec[0]) an += String("  ") + g.away.rec;
-    if (g.home.rec[0]) hn += String("  ") + g.home.rec;
-    text(F_S13, an, 70, 166, C_GREY, C_BG, middle_center);
-    text(F_S13, hn, 410, 166, C_GREY, C_BG, middle_center);
+    bool pre = g.state == GS_PRE;
+    int ax = pre ? 80 : 70, hx = pre ? 400 : 410, ly = pre ? 116 : 98;
+    if (!logoDraw(g.away, ax, ly, 112, C_BG)) letters(g.away.abbr, ax, ly, F_B36, C_BG);
+    if (!logoDraw(g.home, hx, ly, 112, C_BG)) letters(g.home.abbr, hx, ly, F_B36, C_BG);
+    if (pre) {
+      // an upcoming game: just the teams (name, record, a bar in the team's colour) and the button for the rest
+      for (int side = 0; side < 2; side++) {
+        const TeamSide& t = side ? g.home : g.away;
+        int cx = side ? hx : ax;
+        text(F_B16, t.name, cx, 196, C_WHITE, C_BG, middle_center);
+        if (t.rec[0]) text(F_S13, t.rec, cx, 217, C_GREY, C_BG, middle_center);
+        uint16_t c = t.color ? rgb(t.color >> 16, (t.color >> 8) & 255, t.color & 255) : C_DIM;
+        lcd.fillRoundRect(cx - 34, 234, 68, 4, 2, c);
+      }
+      uiTile(8, 274, 150, 314, C_TILE, C_EDGE, 12, 1);
+      text(F_B12, "GAME DETAILS", 71, 294, C_WHITE, C_TILE, middle_center);
+      lcd.fillTriangle(132, 288, 132, 300, 139, 294, C_GREY);
+    } else {
+      String an = String(g.away.name), hn = String(g.home.name);
+      if (g.away.rec[0]) an += String("  ") + g.away.rec;
+      if (g.home.rec[0]) hn += String("  ") + g.home.rec;
+      text(F_S13, an, 70, 166, C_GREY, C_BG, middle_center);
+      text(F_S13, hn, 410, 166, C_GREY, C_BG, middle_center);
+    }
   }
   drawDynamic(g, mode == PG_DYN);
   // a new play: its card, unless the screen was only just opened

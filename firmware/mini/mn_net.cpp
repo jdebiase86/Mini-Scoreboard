@@ -7,6 +7,7 @@
 #include "mn_live.h"
 #include "mn_log.h"
 #include <WiFi.h>
+#include <Preferences.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
@@ -109,6 +110,40 @@ bool netGame(int pick, Game& out) {
   return k;
 }
 
+// What the board remembers about each favourite from its last game (logo, colour, name), so a bye week or a quiet
+// spell still shows the team's own logo. Kept in flash, written only when it changes.
+struct Mark { char logo[64]; uint32_t color; char abbr[8]; char name[22]; uint8_t pad[2]; };
+static Mark marks[MAX_PICKS];
+static bool haveMark[MAX_PICKS];
+static void rememberTeam(int slot, const TeamSide& t) {
+  if (!t.logo[0]) return;
+  Mark m = {};
+  strncpy(m.logo, t.logo, 63); m.color = t.color; strncpy(m.abbr, t.abbr, 7); strncpy(m.name, t.name, 21);
+  if (haveMark[slot] && !memcmp(&marks[slot], &m, sizeof(m))) return;
+  marks[slot] = m; haveMark[slot] = true;
+  Preferences p;
+  char key[8];
+  snprintf(key, sizeof(key), "t%d", slots[slot].team);
+  if (p.begin("teams", false)) { p.putBytes(key, &m, sizeof(m)); p.end(); }
+}
+bool netTeamSide(int pick, TeamSide& out) {
+  if (pick < 0 || pick >= MAX_PICKS || slots[pick].team < 0) return false;
+  if (!haveMark[pick]) {
+    Preferences p;
+    char key[8];
+    snprintf(key, sizeof(key), "t%d", slots[pick].team);
+    Mark m = {};
+    bool ok = p.begin("teams", true) && p.getBytes(key, &m, sizeof(m)) == sizeof(m);
+    p.end();
+    if (!ok) return false;
+    marks[pick] = m; haveMark[pick] = true;
+  }
+  out = TeamSide();
+  strncpy(out.logo, marks[pick].logo, 63); out.color = marks[pick].color;
+  strncpy(out.abbr, marks[pick].abbr, 7); strncpy(out.name, marks[pick].name, 21);
+  return true;
+}
+
 static bool daily(League l) { return l == L_MLB || l == L_NHL || l == L_NBA; }
 
 static void dayString(time_t t, char (&out)[9]) {
@@ -128,7 +163,7 @@ static void rebuild() {
   portENTER_CRITICAL(&mux);
   for (int i = 0; i < MAX_PICKS; i++) {
     int t = i < settings.npicks ? settings.picks[i] : -1;
-    if (slots[i].team != t) { slots[i] = Slot(); slots[i].team = t; }
+    if (slots[i].team != t) { slots[i] = Slot(); slots[i].team = t; haveMark[i] = false; }
   }
   version++;
   portEXIT_CRITICAL(&mux);
@@ -301,7 +336,10 @@ static void netTask(void*) {
     delay(300);
     if (WiFi.status() != WL_CONNECTED || time(nullptr) < 1700000000) continue;
     if (picksDirty) { picksDirty = false; rebuild(); }
-    if (logoFetchOne()) { delay(200); continue; }
+    // logos first, but never more than two in a row, so scores always get their turn
+    static int logoRun = 0;
+    if (logoRun < 2 && logoFetchOne()) { logoRun++; delay(200); continue; }
+    logoRun = 0;
     if (liveStep()) { delay(100); continue; }
 
     // the favourite that's most overdue
@@ -368,6 +406,7 @@ static void netTask(void*) {
           s.okAt = millis() | 1;
           if (changed) version++;
           portEXIT_CRITICAL(&mux);
+          if (changed && g.state != GS_NONE) rememberTeam(i, g.mine());
         }
       }
     }
