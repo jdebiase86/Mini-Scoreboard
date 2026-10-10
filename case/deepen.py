@@ -43,12 +43,12 @@ for p in parts[1:]:
     for q in (p.split(only_watertight=True) if len(p.split(only_watertight=True)) > 1 else [p]): acc = acc + M(q)
 # switch slot through the right end wall (x = 111..116), mid-depth of the new section
 if SPK:
-    # speaker pocket for a 25 (along) x 35 mm speaker: corner ribs, and a grille of 1.8 mm holes through the floor under it
+    # speaker pocket for the 35 x 25 x 6.8 mm rectangular speaker (CQRobot, 25 along the case, 35 across): corner ribs, and a grille of 1.8 mm holes through the floor under it
     SX, SY, sw_, sh_ = 20.5, 30.575, 27.0, 37.0
     for cx, cy in ((SX - sw_ / 2, SY - sh_ / 2), (SX + sw_ / 2, SY - sh_ / 2), (SX - sw_ / 2, SY + sh_ / 2), (SX + sw_ / 2, SY + sh_ / 2)):
         sx = -1 if cx < SX else 1; sy = -1 if cy < SY else 1
-        rx = trimesh.creation.box(extents=[6, rt, 2.5]); rx.apply_translation([cx - sx * (3 - rt), cy + sy * rt / 2, fz + 1.25])
-        ry = trimesh.creation.box(extents=[rt, 6, 2.5]); ry.apply_translation([cx + sx * rt / 2, cy - sy * (3 - rt), fz + 1.25])
+        rx = trimesh.creation.box(extents=[6, rt, 4.0]); rx.apply_translation([cx - sx * (3 - rt), cy + sy * rt / 2, fz + 2.0])
+        ry = trimesh.creation.box(extents=[rt, 6, 4.0]); ry.apply_translation([cx + sx * rt / 2, cy - sy * (3 - rt), fz + 2.0])
         acc = acc + M(rx) + M(ry)
     for i in range(-4, 5):
         for j in range(-7, 8):
