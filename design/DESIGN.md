@@ -279,7 +279,18 @@ screens on it - on a desk stand (orange stand is a placeholder, not designed
 yet) and lying flat. Drawn by case/scene.py.
 
 
-## Ideas for next (Oct 10, from Joe's first day with 0.5 / 0.6; nothing coded)
+## v0.7 (Oct 10, not yet tried on the board)
+Done from the ideas below: dimmer dim (a third less); small HOME button in the top
+bar of the game screen (next to the TV network and battery), the bottom is
+free, so LAST PLAY moves left and the last-play card spans the screen; AUTO
+changes game every 15 s; ticker mode (tap the AUTO tag on a game screen, pick
+all my teams or one league; live games of that set take turns); compressed
+downloads fixed (the 44 KB is set aside before the connection, with a
+fallback, and the game page is never read uncompressed). Still open: the
+bigger layout change (everything shifted down, ticker on top) as pictures, and
+the battery calibration.
+
+## Ideas for next (Oct 10, from Joe's first day with 0.5 / 0.6)
 - Dim screen: a little dimmer than now (it is still quite readable).
 - HOME button: smaller, like EDIT, and moved up into the top bar of the game
   screen (next to the TV network / battery), freeing the bottom of the screen.

@@ -387,15 +387,53 @@ void uiBattery(bool force) {
 }
 
 // ------------------------------------------------------------ HOME button
-static const int HB_X0 = 8, HB_Y0 = 274, HB_X1 = 116, HB_Y1 = 314;
+// small, in the top bar of the game screen (like EDIT on the home screen)
+static const int HB_X0 = 314, HB_Y0 = 3, HB_X1 = 386, HB_Y1 = 29;
 
 void uiHomeButton() {
-  tile(HB_X0, HB_Y0, HB_X1, HB_Y1, C_TILE, C_EDGE, 12);
-  homeIcon(HB_X0 + 26, (HB_Y0 + HB_Y1) / 2, 12, C_WHITE, C_TILE);
-  text(F_B16, "HOME", HB_X0 + 68, (HB_Y0 + HB_Y1) / 2 + 1, C_WHITE, C_TILE, middle_center);
+  tile(HB_X0, HB_Y0, HB_X1, HB_Y1, C_TILE, C_EDGE, 13);
+  homeIcon(HB_X0 + 17, 16, 8, C_WHITE, C_TILE);
+  text(F_B12, "HOME", HB_X0 + 48, 16, C_WHITE, C_TILE, middle_center);
 }
 
 bool uiHomeButtonHit(int x, int y) {
   // a bit of slack round the button: resistive taps land a few dots off
-  return x >= HB_X0 - 8 && x < HB_X1 + 16 && y >= HB_Y0 - 16 && y < SCREEN_H;
+  return x >= HB_X0 - 8 && x < HB_X1 + 4 && y < HB_Y1 + 8;
+}
+
+// ------------------------------------------------------------ ticker chooser
+// Rows: "All my teams", then each league that has a favourite. cur: the row ticked now.
+static int tickRows = 0;
+void uiTicker(const char* const* names, const int* total, const int* live, int n, int cur) {
+  tickRows = n;
+  lcd.fillScreen(C_BG);
+  tile(6, 3, 96, 29, C_TILE, C_EDGE, 13);
+  lcd.fillTriangle(18, 16, 26, 9, 26, 23, C_WHITE);
+  text(F_B12, "BACK", 60, 16, C_WHITE, C_TILE, middle_center);
+  text(F_B16, "Ticker: rotate through", 270, 16, C_WHITE, C_BG, middle_center);
+  for (int i = 0; i < n && i < 6; i++) {
+    int y0 = 40 + i * 46;
+    bool on = i == cur;
+    tile(10, y0, 470, y0 + 40, on ? C_AUTO_BG : C_TILE, on ? C_AUTO_EDGE : C_EDGE, 12, on ? 2 : 1);
+    text(F_B18, names[i], 28, y0 + 20, C_WHITE, on ? C_AUTO_BG : C_TILE, middle_left);
+    String sub = String(total[i]) + (total[i] == 1 ? " team" : " teams");
+    text(F_S13, sub, 340, y0 + 20, C_GREY, on ? C_AUTO_BG : C_TILE, middle_right);
+    if (live[i] > 0) {
+      String lv = String(live[i]) + " live";
+      useFont(F_B12);
+      int w = lcd.textWidth(lv.c_str()) + 16;
+      tile(452 - w, y0 + 10, 452, y0 + 30, C_RED, C_RED, 10);
+      text(F_B12, lv, 452 - w / 2, y0 + 20, C_WHITE, C_RED, middle_center);
+    }
+  }
+}
+
+// -2 = BACK, -1 = nothing, 0.. = the row
+int uiTickerHit(int x, int y) {
+  if (x < 104 && y < 34) return -2;
+  for (int i = 0; i < tickRows && i < 6; i++) {
+    int y0 = 40 + i * 46;
+    if (y >= y0 - 2 && y < y0 + 42) return i;
+  }
+  return -1;
 }

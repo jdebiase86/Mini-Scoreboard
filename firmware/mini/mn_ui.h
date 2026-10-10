@@ -36,3 +36,7 @@ void uiTile(int x0, int y0, int x1, int y1, uint16_t fill, uint16_t edge, int r 
 // The battery icon and percent, top right of the home and game screens. Draws
 // nothing when no battery is connected. force: draw even if nothing changed.
 void uiBattery(bool force);
+
+// The ticker chooser: which games AUTO rotates through. names / total / live: one entry per row.
+void uiTicker(const char* const* names, const int* total, const int* live, int n, int cur);
+int uiTickerHit(int x, int y);   // -2 BACK, -1 nothing, else the row

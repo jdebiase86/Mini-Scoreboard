@@ -209,12 +209,17 @@ static uint32_t cardUntil = 0;
 static bool cardOn = false;
 static int lastAutoSecs = -1;
 
+static bool autoTagOn = false;
+static char autoLabel[12] = "";
+void playAutoLabel(const char* label) { strncpy(autoLabel, label ? label : "", sizeof(autoLabel) - 1); autoLabel[sizeof(autoLabel) - 1] = 0; }
+
 void playAutoTag(int secs) {
   lastAutoSecs = secs;
+  autoTagOn = secs >= 0;
   if (cardOn) return;               // the last-play card has that corner for a few seconds
   lcd.fillRect(250, 278, 226, 36, C_BG);
   if (secs < 0) return;
-  String s = String("AUTO  next game in ") + String(secs) + "s";
+  String s = autoLabel[0] ? String("TICKER ") + autoLabel + "  next in " + String(secs) + "s" : String("AUTO  next game in ") + String(secs) + "s";
   useFont(F_B12);
   int w = lcd.textWidth(s.c_str()) + 20;
   uiTile(472 - w, 284, 472, 306, C_AUTO_BG, C_AUTO_BG, 11, 1);
@@ -355,8 +360,8 @@ static void drawBottom(const Game& g) {
 // the LAST PLAY button, bottom middle (the card takes that corner for a few seconds after a play)
 static bool lastBtnOn = false;
 static void drawLastBtn() {
-  uiTile(124, 274, 238, 314, C_TILE, C_EDGE, 12, 1);
-  text(F_B12, "LAST PLAY", 181, 294, C_WHITE, C_TILE, middle_center);
+  uiTile(8, 274, 122, 314, C_TILE, C_EDGE, 12, 1);
+  text(F_B12, "LAST PLAY", 65, 294, C_WHITE, C_TILE, middle_center);
 }
 
 // the parts of a game screen that move
@@ -404,7 +409,7 @@ static void drawDynamic(const Game& g, bool partial) {
 }
 
 // ---------------------------------------------------------- last play card
-static const int CX0 = 124, CY0 = 248, CX1 = 472, CY1 = 316;
+static const int CX0 = 8, CY0 = 248, CX1 = 472, CY1 = 316;
 
 bool playCardVisible() { return cardOn; }
 
@@ -463,7 +468,8 @@ void playCardHold(const Game& g, uint32_t ms) {
 PlayHit playGameHit(int x, int y, const Game& g, bool known) {
   if (!known || g.state == GS_NONE) return PH_NONE;
   if (cardOn && x >= CX0 - 6 && x < CX1 + 6 && y >= CY0 - 6) return PH_CARD;
-  if (!cardOn && g.state == GS_LIVE && x >= 116 && x < 246 && y >= 266) return PH_LASTPLAY;
+  if (!cardOn && g.state == GS_LIVE && x < 134 && y >= 266) return PH_LASTPLAY;
+  if (!cardOn && autoTagOn && x >= 240 && y >= 270) return PH_AUTOTAG;
   if (y < 40 || y >= 246) return PH_NONE;
   if (g.state == GS_LIVE && g.fb.has) {
     if (y >= 176) return PH_SIT;                       // the field and the win bar
@@ -504,8 +510,14 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
       pw = pill(10, 8, dd <= 0 ? "TODAY" : dd == 1 ? "TOMORROW" : startDay(g), blue, C_WHITE);
     }
     text(F_S13, LEAGUE_NAMES[g.league], 10 + pw + 10, 18, C_GREY, C_BG, middle_left);
-    if (fb && g.fb.redzone) pill(296, 8, "RED ZONE", C_RED, C_WHITE);
-    else if (g.net[0]) text(F_S13, g.net, 388, 18, C_GREY, C_BG, middle_right);
+    useFont(F_S13);
+    int leagueEnd = 10 + pw + 10 + lcd.textWidth(LEAGUE_NAMES[g.league]);
+    if (fb && g.fb.redzone) pill(leagueEnd + 10, 8, "RED ZONE", C_RED, C_WHITE);
+    else if (g.net[0]) {
+      String nt = g.net;
+      while (nt.length() > 3 && lcd.textWidth(nt.c_str()) > 300 - leagueEnd - 12) nt = nt.substring(0, nt.length() - 1);
+      text(F_S13, nt, 306, 18, C_GREY, C_BG, middle_right);
+    }
     uiBattery(true);
     // the two teams
     if (!logoDraw(g.away, 70, 98, 112, C_BG)) letters(g.away.abbr, 70, 98, F_B36, C_BG);

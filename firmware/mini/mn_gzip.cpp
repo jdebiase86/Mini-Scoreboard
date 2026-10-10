@@ -3,12 +3,16 @@
 
 static const size_t DICT = TINFL_LZ_DICT_SIZE;
 
-GzSource::GzSource(ByteSource& s) : src(s) {
+GzSource::GzSource() {
   d = malloc(sizeof(tinfl_decompressor));
   dict = (uint8_t*)malloc(DICT);
-  if (!d || !dict) return;
-  tinfl_init((tinfl_decompressor*)d);
-  good = header();
+  if (d) tinfl_init((tinfl_decompressor*)d);
+}
+
+bool GzSource::begin(ByteSource& s) {
+  src = &s;
+  good = ok() && header();
+  return good;
 }
 
 GzSource::~GzSource() {
@@ -19,23 +23,23 @@ GzSource::~GzSource() {
 // the gzip wrapper: 10 fixed bytes, then optional extra / name / comment / header check
 bool GzSource::header() {
   uint8_t h[10];
-  if (src.readBytes((char*)h, 10) != 10 || h[0] != 0x1f || h[1] != 0x8b || h[2] != 8) return false;
+  if (src->readBytes((char*)h, 10) != 10 || h[0] != 0x1f || h[1] != 0x8b || h[2] != 8) return false;
   uint8_t flg = h[3];
   if (flg & 4) {
-    int a = src.read(), b = src.read();
+    int a = src->read(), b = src->read();
     if (a < 0 || b < 0) return false;
-    for (int n = a | (b << 8); n > 0; n--) if (src.read() < 0) return false;
+    for (int n = a | (b << 8); n > 0; n--) if (src->read() < 0) return false;
   }
   for (uint8_t bit : {8, 16})
-    if (flg & bit) for (int c; (c = src.read()) != 0;) if (c < 0) return false;
-  if (flg & 2) { src.read(); src.read(); }
+    if (flg & bit) for (int c; (c = src->read()) != 0;) if (c < 0) return false;
+  if (flg & 2) { src->read(); src->read(); }
   return true;
 }
 
 bool GzSource::refill() {
   while (outN == 0 && !done) {
     if (inPos >= inLen && !inEnd) {
-      inLen = src.readBytes((char*)in, sizeof(in));
+      inLen = src->readBytes((char*)in, sizeof(in));
       inPos = 0;
       if (inLen == 0) inEnd = true;
     }

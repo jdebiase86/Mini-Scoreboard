@@ -19,6 +19,7 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode);
 bool playCardVisible();
 void playCardHide();
 void playCardTick();                  // call often: takes the card away when its time is up
+void playAutoLabel(const char* label);   // "NFL": the ticker is on one league; "" = all my teams
 void playAutoTag(int autoSecs);       // just the "AUTO next game in 14s" tag
 uint32_t playGameSig(const Game& g, bool known);   // everything on the screen
 uint32_t playGameShape(const Game& g, bool known); // what only changes when the screen needs redrawing in full
@@ -29,7 +30,7 @@ String playStatus(const Game& g);
 void playTeamColours(const Game& g, uint16_t& away, uint16_t& home);
 
 // What a tap on the game screen is on (when the game's details can be shown)
-enum PlayHit { PH_NONE = 0, PH_CARD, PH_TEAMS, PH_SIT, PH_STATS, PH_LASTPLAY };
+enum PlayHit { PH_NONE = 0, PH_CARD, PH_TEAMS, PH_SIT, PH_STATS, PH_LASTPLAY, PH_AUTOTAG };
 PlayHit playGameHit(int x, int y, const Game& g, bool known);
 // Brings the last-play card back for `ms` (after its details were looked at)
 void playCardHold(const Game& g, uint32_t ms);
