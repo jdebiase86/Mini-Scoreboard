@@ -6,6 +6,7 @@ Scoreboard repo (assets/logos). Needs Pillow and the Inter font.
     python3 mock_mini.py opp    -> mini_redzone_opp.png (red zone pop-ups, ours vs theirs)
     python3 mock_mini.py plays  -> mini_plays.png (defense, turnover and punt animations)
     python3 mock_mini.py game   -> mini_game_extras.png (win chance bar, drive tracker options, close game, stats)
+    python3 mock_mini.py battery -> mini_battery.png (battery meter ideas)
     python3 mock_mini.py picker -> mini_picker.png (team picker on the mini itself)
     python3 mock_mini.py game2  -> mini_game_v2.png (picked: drive on the field, play pop-up, small HOME, no AUTO button)
 
@@ -108,6 +109,75 @@ def remote_icon(d, cx, cy, col=WHITE):
 def finish(img, name):
     out = img.convert("RGB").resize((W, H), Image.LANCZOS)
     return out
+
+
+
+# ---------------------------------------------------------------- battery meter (Oct 10 idea)
+AMBER = (245, 150, 30)
+
+def batt_icon(d, x, y, pct, charging=False, col=None):
+    """A battery 30 x 15 with its nub; x, y = top left. Filled to pct."""
+    col = col or (GREEN if pct > 20 else (AMBER if pct > 10 else RED))
+    if charging: col = GREEN
+    rbox(d, x, y, x + 30, y + 15, None, r=3, outline=WHITE if not charging else GREEN, width=2)
+    d.rectangle(R(x + 30, y + 4, x + 33, y + 11), fill=WHITE if not charging else GREEN)
+    w = max(2, (24 * pct) / 100)
+    rbox(d, x + 3, y + 3, x + 3 + w, y + 12, col, r=1)
+    if charging:   # a bolt
+        d.polygon([((x + 17) * S, (y + 1) * S), ((x + 11) * S, (y + 9) * S), ((x + 15) * S, (y + 9) * S),
+                   ((x + 13) * S, (y + 14) * S), ((x + 20) * S, (y + 6) * S), ((x + 16) * S, (y + 6) * S)], fill=WHITE)
+
+def top_battery(img_rgb, pct, charging=False, est=None, cover=(396, 3, 478, 29), label=True):
+    img = img_rgb.convert("RGBA").resize((W * S, H * S), Image.LANCZOS); d = ImageDraw.Draw(img)
+    x0, y0, x1, y1 = cover
+    d.rectangle(R(x0, y0, x1, y1), fill=BG)
+    col = GREEN if charging or pct > 20 else (AMBER if pct > 10 else RED)
+    batt_icon(d, 440, 9, pct, charging)
+    text(d, 434, 16, ("%d%%" % pct), font(FB, 13), col if pct <= 20 and not charging else WHITE, "rm")
+    if est: text(d, 386, 16, est, font(FS, 12), col, "rm")
+    return img, d
+
+def batt_home(pct=78, charging=False, est=None):
+    img, d = top_battery(home(), pct, charging, est)
+    return img.convert("RGB").resize((W, H), Image.LANCZOS)
+
+def batt_game(pct, est=None, card=None, flash=False):
+    base = game_v2()
+    img, d = top_battery(base, pct, False, est, cover=(300, 3, 478, 29))
+    if card:
+        title, sub, colr = card
+        d.rectangle(R(0, 104, W, 216), fill=(18, 20, 26))
+        d.rectangle(R(0, 104, W, 108), fill=colr); d.rectangle(R(0, 212, W, 216), fill=colr)
+        batt_icon(d, 36, 134, 8 if flash else 10, col=colr)
+        d.rectangle(R(36, 134, 36, 134), fill=colr)
+        text(d, 290, 144, title, font(FB, 34), colr, "mm")
+        text(d, 290, 186, sub, font(FB, 15), WHITE, "mm")
+    return img.convert("RGB").resize((W, H), Image.LANCZOS)
+
+def batt_page():
+    img, d = new()
+    back = (6, 3, 96, 29); rbox(d, 6, 3, 96, 29, TILE, r=13, outline=EDGE)
+    d.polygon([(18 * S, 16 * S), (26 * S, 9 * S), (26 * S, 23 * S)], fill=WHITE)
+    text(d, 60, 16, "BACK", font(FB, 12), WHITE, "mm")
+    text(d, 240, 16, "Battery", font(FB, 16), WHITE, "mm")
+    # the big battery
+    rbox(d, 24, 70, 214, 150, None, r=14, outline=WHITE, width=4)
+    d.rectangle(R(214, 94, 226, 126), fill=WHITE)
+    rbox(d, 32, 78, 32 + 174 * 0.78, 142, GREEN, r=9)
+    text(d, 119, 110, "78%", font(FB, 40), WHITE, "mm")
+    text(d, 250, 92, "About 6 h 10 min left", font(FB, 20), WHITE, "lm")
+    text(d, 250, 120, "at the current brightness", font(FR, 13), GREY, "lm")
+    text(d, 250, 146, "Not charging  -  3.92 V", font(FS, 13), GREY, "lm")
+    # saver switch
+    rbox(d, 24, 176, 456, 262, TILE, r=14, outline=EDGE)
+    text(d, 44, 202, "Battery saver", font(FB, 18), WHITE, "lm")
+    text(d, 44, 228, "Dimmer screen, checks scores less often,", font(FR, 13), GREY, "lm")
+    text(d, 44, 246, "sleeps after 2 minutes. Big moments still wake it.", font(FR, 13), GREY, "lm")
+    rbox(d, 376, 192, 440, 222, (60, 66, 82), r=15)
+    d.ellipse(R(380, 196, 406, 218), fill=WHITE)
+    text(d, 408, 270, "OFF", font(FB, 11), DIM, "mm")
+    text(d, 240, 296, "Plug in when it says 10% or less", font(FR, 12), DIM, "mm")
+    return finish(img, "")
 
 
 # ---------------------------------------------------------------- on-device team picker (Oct 7 idea)
@@ -702,6 +772,14 @@ elif len(sys.argv) > 1 and sys.argv[1] == "opp":
     shots = [("Ours: RED ZONE (good)", live(rz=True, alert=True)), ("Theirs, option A: DEFENSE!", live(rz=True, opp=True, bad="defense")),
              ("Theirs, option B: UH OH...", live(rz=True, opp=True, bad="uhoh"))]
     name = "mini_redzone_opp.png"
+elif len(sys.argv) > 1 and sys.argv[1] == "battery":
+    COMPACT = True
+    shots = [("1. Home: 78%", batt_home(78)), ("2. Home: plugged in, charging", batt_home(64, True)),
+             ("3. Game screen at 17%: turns amber, time left", batt_game(17, "~50 min")),
+             ("4. At 10%: a card for a few seconds", batt_game(10, "~25 min", ("BATTERY LOW", "About 25 minutes left - plug in soon", AMBER))),
+             ("5. Last 5 minutes: flashes red", batt_game(3, "~5 min", ("PLUG IN NOW", "About 5 minutes of battery left", RED), flash=True)),
+             ("6. Tap the battery: details + saver", batt_page())]
+    name = "mini_battery.png"
 elif len(sys.argv) > 1 and sys.argv[1] == "picker":
     shots = [("1. Home: EDIT button (yellow)", picker_home()), ("2. Tap EDIT: pick a league", picker_leagues()),
              ("3. College: pick a conference", picker_college()), ("Option A: list, 10 a page", picker_list()),
