@@ -3,6 +3,7 @@ import glob, os
 from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "../../design/mini_stage3.png")
+ONLY = os.environ.get("ONLY", "")
 F = ImageFont.truetype(os.path.join(os.environ.get("FONTS", "/usr/share/fonts/opentype/inter"), "Inter-SemiBold.otf"), 20)
 CAP = {
     "d01_home": "Home: Wi-Fi button and battery",
@@ -26,8 +27,24 @@ CAP = {
     "w05_keyboard_symbols": "Symbols page",
     "w06_setup_screen": "First setup screen, new button",
     "w07_joining": "Joining",
+    "w08_forgot_current": "Forgot the network you're on",
+    "e01_basketball_live": "Basketball live: score by quarter, LAST PLAY *",
+    "e02_hockey_live": "Hockey live: score by period *",
+    "e03_baseball_before": "Baseball before the game: starters (real)",
+    "e04_football_before": "Football before the game: leaders (real)",
+    "e05_football_final": "Football final: score by quarter (real)",
+    "e06_football_live_button": "Football live: LAST PLAY button *",
+    "e07_stats_basketball": "Tap the score by quarter: team stats *",
+    "e08_stats_hockey": "Hockey team stats *",
+    "e09_stats_college": "College team stats (real page)",
+    "e10_teams_live_leaders": "Teams card with live leaders (real page)",
+    "e11_last_play_basketball": "Last play, basketball *",
+    "e12_last_play_hockey": "Last play, hockey *",
+    "e13_stats_baseball_none": "Baseball: no team stats from ESPN",
 }
 files = sorted(glob.glob(os.path.join(HERE, "out/n_*.ppm")))
+if ONLY: files = [f for f in files if os.path.basename(f)[2:].startswith(ONLY)]
+if ONLY: OUT = os.path.join(HERE, "../../design/mini_stage4.png")
 cols, W, H, pad, cap = 3, 480, 320, 24, 34
 rows = (len(files) + cols - 1) // cols
 sheet = Image.new("RGB", (pad + cols * (W + pad), pad + rows * (H + cap + pad) + 30), (234, 236, 240))

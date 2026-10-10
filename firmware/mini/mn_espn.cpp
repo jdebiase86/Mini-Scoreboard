@@ -1,4 +1,5 @@
 #include "mn_espn.h"
+#include "mn_jscan.h"
 #include <strings.h>
 
 static const char* const PATHS[L_COUNT] = {"football/nfl", "football/college-football", "baseball/mlb", "hockey/nhl",
@@ -13,6 +14,10 @@ String espnUrl(League l, int group, const char* day) {
   return u;
 }
 
+String espnSummaryUrl(League l, const char* id) {
+  return String("https://site.api.espn.com/apis/site/v2/sports/") + PATHS[l] + "/summary?event=" + id;
+}
+
 bool Game::same(const Game& o) const {
   return state == o.state && league == o.league && mineHome == o.mineHome && start == o.start && period == o.period &&
          !strcmp(clock, o.clock) && !strcmp(detail, o.detail) && !strcmp(net, o.net) &&
@@ -24,8 +29,7 @@ bool Game::same(const Game& o) const {
 }
 
 template <size_t N> static void scopy(char (&dst)[N], const char* src) {
-  strncpy(dst, src ? src : "", N - 1);
-  dst[N - 1] = 0;
+  foldUtf8(src ? src : "", dst, N);   // the screen fonts only have plain letters: "Jokic", not "Jokić"
 }
 
 bool espnLoad(ByteSource& src, JsonDocument& doc, bool rich) {
@@ -33,6 +37,7 @@ bool espnLoad(ByteSource& src, JsonDocument& doc, bool rich) {
   // they're assigned through the document itself)
   JsonDocument filter;
   JsonObject ev = filter["events"][0].to<JsonObject>();
+  ev["id"] = true;
   ev["date"] = true;
   ev["status"]["period"] = true;
   ev["status"]["displayClock"] = true;
@@ -224,6 +229,7 @@ bool espnFind(const JsonDocument& doc, int team, time_t now, Game& out) {
     const char* st = e["status"]["type"]["state"] | "";
     g.state = !strcmp(st, "in") ? GS_LIVE : !strcmp(st, "post") ? GS_POST : GS_PRE;
     g.start = espnParseTime(e["date"] | "");
+    scopy(g.id, e["id"] | "");
     g.period = e["status"]["period"] | 0;
     scopy(g.clock, e["status"]["displayClock"] | "");
     scopy(g.detail, e["status"]["type"]["shortDetail"] | "");

@@ -4,6 +4,7 @@
 #include "mn_settings.h"
 #include "mn_tls.h"
 #include "mn_gzip.h"
+#include "mn_live.h"
 #include "mn_log.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -117,7 +118,9 @@ static void rebuild() {
   portEXIT_CRITICAL(&mux);
 }
 
-static bool fetchFeed(const String& url, JsonDocument& doc, bool rich) {
+// Downloads `url` and hands the bytes (unpacked if ESPN sent them compressed) to read().
+typedef bool (*Reader)(ByteSource& src, void* ctx);
+static bool fetchStream(const String& url, Reader read, void* ctx) {
   if (!mnTlsTake(20000)) return false;
   bool ok = false;
   // ask for it compressed (twelve times less to download) when there's room
@@ -140,10 +143,10 @@ static bool fetchFeed(const String& url, JsonDocument& doc, bool rich) {
         NetReader r(http.getStreamPtr(), http.getSize());
         if (wantGz && http.header("Content-Encoding").indexOf("gzip") >= 0) {
           GzSource gz(r);
-          ok = gz.ok() && espnLoad(gz, doc, rich) && !gz.failed();
+          ok = gz.ok() && read(gz, ctx) && !gz.failed();
           if (!ok) mnLog("scores: gzip answer didn't read");
         } else {
-          ok = espnLoad(r, doc, rich);
+          ok = read(r, ctx);
         }
       } else {
         mnLog("scores: ESPN answered %d", code);
@@ -153,6 +156,74 @@ static bool fetchFeed(const String& url, JsonDocument& doc, bool rich) {
   }
   mnTlsGive();
   return ok;
+}
+
+struct FeedCtx { JsonDocument* doc; bool rich; };
+static bool readFeed(ByteSource& src, void* c) {
+  FeedCtx* f = (FeedCtx*)c;
+  return espnLoad(src, *f->doc, f->rich);
+}
+static bool fetchFeed(const String& url, JsonDocument& doc, bool rich) {
+  FeedCtx c{&doc, rich};
+  return fetchStream(url, readFeed, &c);
+}
+
+// ---------------------------------------------------- the live page of one game
+// While a details card is open the mini also reads the game's own page for the
+// team stats, leaders so far and the last play (mn_live). One game at a time.
+static LiveInfo liveBuf;
+static int livePick = -1;
+static uint32_t liveUntil = 0, liveNextAt = 0;
+static char liveId[12] = "";
+
+void netWantLive(int pick) {
+  if (pick < 0 || pick >= MAX_PICKS) return;
+  portENTER_CRITICAL(&mux);
+  if (livePick != pick) { livePick = pick; liveBuf = LiveInfo(); liveId[0] = 0; liveNextAt = millis(); }
+  else if ((int32_t)(millis() - liveUntil) >= 0) liveNextAt = millis();   // it had lapsed
+  liveUntil = millis() + 60000;
+  portEXIT_CRITICAL(&mux);
+}
+
+bool netLive(int pick, LiveInfo& out) {
+  portENTER_CRITICAL(&mux);
+  bool ok = livePick == pick && liveBuf.has;
+  if (ok) out = liveBuf;
+  portEXIT_CRITICAL(&mux);
+  return ok;
+}
+
+struct LiveCtx { const Game* g; LiveInfo* out; };
+static bool readLive(ByteSource& src, void* c) {
+  LiveCtx* l = (LiveCtx*)c;
+  return liveParse(src, *l->g, *l->out);
+}
+
+// true when it fetched (or tried to)
+static bool liveStep() {
+  uint32_t ms = millis();
+  if (livePick < 0 || (int32_t)(ms - liveUntil) >= 0 || (int32_t)(ms - liveNextAt) < 0) return false;
+  Game g;
+  if (!netGame(livePick, g) || !g.id[0] || g.state == GS_NONE || g.state == GS_PRE) { liveNextAt = ms + 5000; return false; }
+  if (ESP.getMaxAllocHeap() < 70000) { liveNextAt = ms + 3000; return false; }
+  static LiveInfo fresh;   // (not on the task's small stack)
+  LiveCtx c{&g, &fresh};
+  uint32_t t0 = millis();
+  bool ok = fetchStream(espnSummaryUrl(g.league, g.id), readLive, &c);
+  portENTER_CRITICAL(&mux);
+  if (ok && livePick >= 0) {
+    strncpy(fresh.id, g.id, sizeof(fresh.id) - 1);
+    bool changed = !liveBuf.has || liveBuf.sig != fresh.sig;
+    liveBuf = fresh;
+    if (changed) version++;
+    liveNextAt = millis() + (g.state == GS_LIVE ? 12000 : 300000);   // a final doesn't change
+  } else {
+    liveNextAt = millis() + 8000;
+  }
+  portEXIT_CRITICAL(&mux);
+  mnLog("live: %s %s in %lu ms, heap %u KB", g.id, ok ? "ok" : "failed", (unsigned long)(millis() - t0),
+        (unsigned)(ESP.getFreeHeap() / 1024));
+  return true;
 }
 
 // how soon to look again
@@ -179,6 +250,7 @@ static void netTask(void*) {
     if (WiFi.status() != WL_CONNECTED || time(nullptr) < 1700000000) continue;
     if (picksDirty) { picksDirty = false; rebuild(); }
     if (logoFetchOne()) { delay(200); continue; }
+    if (liveStep()) { delay(100); continue; }
 
     // the favourite that's most overdue
     uint32_t ms = millis();

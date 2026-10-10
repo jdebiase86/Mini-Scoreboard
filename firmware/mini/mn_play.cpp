@@ -3,6 +3,7 @@
 #include "mn_logo.h"
 #include "mn_lcd.h"
 #include "mn_settings.h"
+#include "mn_detail.h"
 
 static void text(FontId f, const String& s, int x, int y, uint16_t col, uint16_t bg, textdatum_t d) {
   uiText(f, s, x, y, col, bg, d);
@@ -49,6 +50,7 @@ uint32_t playGameSig(const Game& g, bool known) {
   h = fnv(h, &g.fb.winHome, 1);
   h = fnv(h, &g.fb.driveStart, sizeof(g.fb.driveStart));
   h = fnv(h, g.fb.playId, strlen(g.fb.playId));
+  h = fnv(h, &g.det.sig, sizeof(g.det.sig));
   return h;
 }
 
@@ -63,6 +65,7 @@ uint32_t playGameShape(const Game& g, bool known) {
   h = fnv(h, g.home.rec, strlen(g.home.rec));
   h = fnv(h, g.net, strlen(g.net));
   h = fnv(h, &g.fb.redzone, 1);   // the RED ZONE tag is up in the top bar
+  h = fnv(h, &g.det.has, 1);      // the bottom area fills in when the extras arrive
   uint32_t v = logoVersion();
   return fnv(h, &v, sizeof(v));
 }
@@ -307,6 +310,55 @@ static void drawTimeouts(int cx, int left) {
   for (int k = 0; k < 3; k++) uiTile(cx - 22 + k * 16, 130, cx - 10 + k * 16, 134, k < left ? C_YELLOW : C_DIM, k < left ? C_YELLOW : C_DIM, 2, 1);
 }
 
+// ------------------------------------------------- the area under the scores
+// Where a live football game has its field: for everything else the score by
+// period (live and final) or the starters and leaders (before the game).
+static void leaderRow(const Leader& l, int x0, int y, int w) {
+  text(F_B12, l.cat, x0, y, C_YELLOW, C_BG, middle_left);
+  String nm = l.name;
+  useFont(F_S13);
+  while (nm.length() > 4 && lcd.textWidth(nm.c_str()) > 92) nm = nm.substring(0, nm.length() - 1);
+  text(F_S13, nm, x0 + 40, y, C_WHITE, C_BG, middle_left);
+  String v = l.val;
+  while (v.length() > 4 && lcd.textWidth(v.c_str()) > w - 138) v = v.substring(0, v.length() - 1);
+  text(F_S13, v, x0 + 136, y, C_GREY, C_BG, middle_left);
+}
+
+static void drawBottom(const Game& g) {
+  if (!g.det.has) {
+    text(F_S13, "Getting the details...", 240, 212, C_DIM, C_BG, middle_center);
+    return;
+  }
+  if (g.state != GS_PRE && (g.det.away.nLines || g.det.home.nLines)) {
+    detailLineScore(g, 184);
+    if (g.det.venue[0]) text(F_S13, g.det.venue, 240, 250, C_DIM, C_BG, middle_center);
+    return;
+  }
+  // before the game: the starters, then the leaders
+  int y = 190;
+  bool starters = g.det.away.starter[0] || g.det.home.starter[0];
+  if (starters) {
+    text(F_B12, "STARTER", 14, y, C_GREY, C_BG, middle_left);
+    text(F_B16, g.det.away.starter, 14, y + 18, C_WHITE, C_BG, middle_left);
+    text(F_B16, g.det.home.starter, 250, y + 18, C_WHITE, C_BG, middle_left);
+    y += 42;
+  }
+  int rows = starters ? 1 : 3;
+  for (int i = 0; i < rows; i++) {
+    if (g.det.away.lead[i].cat[0]) leaderRow(g.det.away.lead[i], 14, y + i * 22, 226);
+    if (g.det.home.lead[i].cat[0]) leaderRow(g.det.home.lead[i], 250, y + i * 22, 226);
+  }
+  if (!starters && !g.det.away.lead[0].cat[0] && !g.det.home.lead[0].cat[0] && g.det.venue[0])
+    text(F_S13, g.det.venue, 240, 212, C_GREY, C_BG, middle_center);
+}
+
+// the LAST PLAY button, bottom middle (the card takes that corner for a few seconds after a play)
+static bool lastBtnOn = false;
+static void drawLastBtn() {
+  uiTile(124, 274, 238, 314, C_TILE, C_EDGE, 12, 1);
+  text(F_B12, "LAST PLAY", 181, 294, C_WHITE, C_TILE, middle_center);
+}
+
 // the parts of a game screen that move
 static void drawDynamic(const Game& g, bool partial) {
   const TeamSide& a = g.away;
@@ -315,11 +367,12 @@ static void drawDynamic(const Game& g, bool partial) {
   bool rz = fb && g.fb.redzone;
   if (partial) {
     lcd.fillRect(128, 50, 224, 126, C_BG);                      // the scores and the middle
-    if (fb || g.league == L_NFL || g.league == L_CFB) lcd.fillRect(0, 176, 480, 70, C_BG);   // field and win bar
+    lcd.fillRect(0, 176, 480, 70, C_BG);   // the field and win bar, or the area that stands in for them
   }
   if (g.state == GS_PRE) {
     text(F_S13, startDate(g), 240, 70, C_GREY, C_BG, middle_center);
     text(F_B36, startTime(g), 240, 102, C_WHITE, C_BG, middle_center);
+    drawBottom(g);
     return;
   }
   // scores: big, or smaller when they run to three digits
@@ -339,7 +392,7 @@ static void drawDynamic(const Game& g, bool partial) {
     text(F_S13, periodWord(g), 240, 76, rz ? C_RED : C_GREY, C_BG, middle_center);
     text(F_B24, g.clock, 240, 100, rz ? C_RED : C_WHITE, C_BG, middle_center);
   }
-  if (!fb) return;
+  if (!fb) { drawBottom(g); return; }
   // football: down and distance, where the ball is, timeouts, who has it
   if (g.fb.dd[0]) text(F_B16, g.fb.dd, 240, 122, rz ? C_RED : C_YELLOW, C_BG, middle_center);
   if (g.fb.at[0]) text(F_S13, String("at ") + g.fb.at, 240, 142, C_GREY, C_BG, middle_center);
@@ -359,6 +412,7 @@ void playCardHide() {
   if (!cardOn) return;
   cardOn = false;
   lcd.fillRect(CX0 - 4, CY0 - 2, CX1 - CX0 + 8, 320 - CY0 + 2, C_BG);
+  if (lastBtnOn) drawLastBtn();
   playAutoTag(lastAutoSecs);
 }
 
@@ -409,11 +463,13 @@ void playCardHold(const Game& g, uint32_t ms) {
 PlayHit playGameHit(int x, int y, const Game& g, bool known) {
   if (!known || g.state == GS_NONE) return PH_NONE;
   if (cardOn && x >= CX0 - 6 && x < CX1 + 6 && y >= CY0 - 6) return PH_CARD;
+  if (!cardOn && g.state == GS_LIVE && x >= 116 && x < 246 && y >= 266) return PH_LASTPLAY;
   if (y < 40 || y >= 246) return PH_NONE;
   if (g.state == GS_LIVE && g.fb.has) {
     if (y >= 176) return PH_SIT;                       // the field and the win bar
     if (y >= 110 && x >= 128 && x < 352) return PH_SIT;   // down and distance, timeouts
   }
+  if (y >= 176 && g.state != GS_PRE && detailHasStats(g)) return PH_STATS;   // the score by period: tap for the team stats
   return PH_TEAMS;
 }
 
@@ -424,6 +480,8 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     cardOn = false;
     uiHomeButton();
     lastAutoSecs = autoSecs;
+    lastBtnOn = known && g.state == GS_LIVE;
+    if (lastBtnOn) drawLastBtn();
     playAutoTag(autoSecs);
   }
   if (!known || g.state == GS_NONE) {

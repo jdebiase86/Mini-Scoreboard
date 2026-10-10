@@ -162,6 +162,18 @@ void setup() {
   }
 }
 
+// opens a details card (or switches to another one) and asks for what it needs
+static void openDetail(DetailKind k) {
+  detKind = k;
+  detailOpen(k);
+  if (k == DK_TEAMS || k == DK_STATS || k == DK_PLAY) netWantDetails(shownPick);
+  Game g;
+  bool football = settings.npicks && netGame(shownPick, g) && (g.league == L_NFL || g.league == L_CFB);
+  // the game's own page: stats, leaders so far, the last play (football's last play is already here)
+  if (k == DK_TEAMS || k == DK_STATS || (k == DK_PLAY && !football)) netWantLive(shownPick);
+  setMode(M_DETAIL);
+}
+
 static void closeDetail() {
   holdCardAfter = detKind == DK_PLAY;
   autoAt = millis() + AUTO_MS;
@@ -204,16 +216,17 @@ static void handleTap(int x, int y) {
       bool known = settings.npicks && netGame(shownPick, g);
       PlayHit h = playGameHit(x, y, g, known);
       if (h == PH_NONE) break;
-      detKind = h == PH_CARD ? DK_PLAY : h == PH_SIT ? DK_SIT : DK_TEAMS;
-      detailOpen(detKind);
-      if (detKind == DK_TEAMS) netWantDetails(shownPick);
-      setMode(M_DETAIL);
+      detKind = h == PH_CARD || h == PH_LASTPLAY ? DK_PLAY : h == PH_SIT ? DK_SIT : h == PH_STATS ? DK_STATS : DK_TEAMS;
+      openDetail(detKind);
       break;
     }
-    case M_DETAIL:
+    case M_DETAIL: {
       detailTouched();
-      if (detailTap(x, y)) closeDetail();
+      DetailTap t = detailTap(x, y, detKind);
+      if (t == DT_BACK) closeDetail();
+      else if (t == DT_STATS || t == DT_TEAMS) openDetail(t == DT_STATS ? DK_STATS : DK_TEAMS);
       break;
+    }
     case M_WIFI:
       if (wifiTap(x, y) == WR_BACK) setMode(wifiFrom);
       break;
@@ -400,6 +413,8 @@ void loop() {
         known = settings.npicks && netGame(shownPick, g);
         left = (int)(AUTO_MS / 1000);
       }
+      static uint32_t teamWantAt = 0;
+      if (settings.npicks && (dirty || millis() - teamWantAt > 30000)) { netWantDetails(shownPick); teamWantAt = millis(); }
       uint32_t sig = settings.npicks ? playGameSig(g, known) : 0;
       uint32_t shape = settings.npicks ? playGameShape(g, known) : 0;
       if (dirty || shape != shownShape) {
@@ -426,11 +441,16 @@ void loop() {
       if (shownPick >= settings.npicks) shownPick = 0;
       Game g;
       bool known = settings.npicks && netGame(shownPick, g);
-      uint32_t sig = detailSig(g, known);
+      static LiveInfo live;   // (not on the stack: it's about 800 bytes)
+      bool haveLive = settings.npicks && netLive(shownPick, live);
+      uint32_t sig = detailSig(g, known, haveLive ? &live : nullptr);
       static uint32_t wantAt = 0;
       if (dirty) { dirty = false; detSig = ~sig; wantAt = millis(); }
-      if (detKind == DK_TEAMS && millis() - wantAt > 30000) { netWantDetails(shownPick); wantAt = millis(); }
-      if (sig != detSig) { detailDraw(detKind, settings.picks[shownPick], g, known); detSig = sig; }
+      if (millis() - wantAt > 30000) {
+        if (detKind != DK_SIT) { netWantDetails(shownPick); netWantLive(shownPick); }
+        wantAt = millis();
+      }
+      if (sig != detSig) { detailDraw(detKind, settings.picks[shownPick], g, known, haveLive ? &live : nullptr); detSig = sig; }
       if (detailExpired()) closeDetail();
       break;
     }

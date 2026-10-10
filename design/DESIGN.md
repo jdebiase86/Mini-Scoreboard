@@ -174,6 +174,22 @@ built in the stages below.
      bar (situation). The extras are only read from ESPN while a details
      card is open (they cost memory). No betting lines. ESPN sends leaders
      for NFL only before a game.
+   v0.6 (Oct 10, not yet tried on the board), after Joe's first try of 0.5:
+   - Wi-Fi: a scan that fails to start is retried (up to 3 times); the network
+     you're on shows JOINED and SAVED together; forgetting it says you stay on
+     it until you join another.
+   - Battery: charging from a 40 mV jump in 30 s (plug in / out), a slow
+     6 mV / 5 min climb or fall, or 4.17 V and up; 80 mV (less near full) is
+     taken off while charging because the charger lifts the reading (90% became
+     81% on unplug). Raw millivolts are in mini.local/log every minute.
+   - The game's own page (ESPN summary, 40-90 KB compressed) is read as it
+     streams (mn_jscan / mn_live, about 800 bytes kept) while a details card is
+     open: team stats (football, basketball, hockey; none for baseball), leaders
+     so far, and the last play for every sport.
+   - Game screen: LAST PLAY button (live games); under the scores, where the
+     field is for live football: score by period (live, final) or starters and
+     leaders (before the game); tap it for the team stats card. Teams card and
+     stats card switch with a button.
 4. Red zone and play animations (touchdown, field goal, goal, home run and
    win first), then the rest.
 5. Sound.

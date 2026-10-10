@@ -28,6 +28,9 @@ static int pages() { return (entries() + PER_PAGE - 1) / PER_PAGE; }
 
 static String connectedSsid() { return WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String(); }
 
+static int scanTries = 0;
+static String note;   // shown under the title until the next scan: "Forgot ..."
+
 static void startScan() {
   WiFi.scanDelete();
   WiFi.scanNetworks(true, false);   // in the background; the screen keeps working
@@ -37,6 +40,12 @@ static void startScan() {
 
 static void gather() {
   int n = WiFi.scanComplete();
+  if (n < 0) {   // the scan didn't work: keep what we had
+    WiFi.scanDelete();
+    scanning = false;
+    mnLog("wifi: scan failed");
+    return;
+  }
   nAps = 0;
   for (int i = 0; i < n; i++) {
     String s = WiFi.SSID(i);
@@ -105,7 +114,12 @@ void wifiDraw() {
   uiTile(380, 3, 474, 29, C_TILE, C_EDGE, 13, 1);
   uiText(F_B12, scanning ? "LOOKING..." : "RESCAN", 427, 16, C_WHITE, C_TILE, middle_center);
   String cur = connectedSsid();
-  if (cur.length()) {
+  if (note.length()) {
+    String l = note;
+    useFont(F_S13);
+    while (l.length() > 8 && lcd.textWidth(l.c_str()) > 460) l = l.substring(0, l.length() - 1);
+    uiText(F_S13, l, 12, 46, C_YELLOW, C_BG, middle_left);
+  } else if (cur.length()) {
     String l = "Connected to " + cur;
     useFont(F_S13);
     while (l.length() > 8 && lcd.textWidth(l.c_str()) > 460) l = l.substring(0, l.length() - 1);
@@ -139,8 +153,12 @@ void wifiDraw() {
     bars(xr - 22, cy + 9, a.rssi, C_WHITE);
     xr -= 34;
     if (!a.open) { lockIcon(xr - 12, cy - 7, C_GREY, on ? C_TILE_HI : C_TILE); xr -= 22; }
-    if (on) pillText(xr, cy, "JOINED", C_GREEN, C_WHITE);
-    else if (saved) pillText(xr, cy, "SAVED", rgb(60, 66, 82), C_WHITE);
+    if (on) {
+      pillText(xr, cy, "JOINED", C_GREEN, C_WHITE);
+      if (saved) pillText(xr - 70, cy, "SAVED", rgb(60, 66, 82), C_WHITE);
+    } else if (saved) {
+      pillText(xr, cy, "SAVED", rgb(60, 66, 82), C_WHITE);
+    }
   }
   if (!nAps && !scanning) uiText(F_M15, "No networks found. Tap RESCAN.", 240, 120, C_GREY, C_BG, middle_center);
   // pages
@@ -204,6 +222,8 @@ bool wifiBusy() { return state == S_JOINING || state == S_MSG; }
 
 void wifiStart() {
   page = 0;
+  scanTries = 0;
+  note = "";
   state = S_LIST;
   nAps = 0;
   startScan();
@@ -218,9 +238,12 @@ static void backToList() {
 WifiResult wifiLoop() {
   if (state == S_LIST && scanning) {
     int n = WiFi.scanComplete();
-    if (n >= 0 || (n == -2 && millis() - scanAt > 500) || millis() - scanAt > 15000) {
-      gather();
-      wifiDraw();
+    bool failed = (n == -2 && millis() - scanAt > 400) || millis() - scanAt > 15000;
+    if (n >= 0) { gather(); wifiDraw(); }
+    else if (failed) {
+      // a scan that didn't start or didn't finish: try again (up to 3 more times) before giving up
+      if (++scanTries < 4) { mnLog("wifi: scan again (%d)", scanTries); startScan(); }
+      else { gather(); wifiDraw(); }
     }
   }
   if (state == S_JOINING) {
@@ -290,7 +313,7 @@ WifiResult wifiTap(int x, int y) {
   switch (state) {
     case S_LIST: {
       if (x < 104 && y < 34) return WR_BACK;
-      if (x >= 376 && y < 34) { if (!scanning) { startScan(); wifiDraw(); } return WR_STAY; }
+      if (x >= 376 && y < 34) { if (!scanning) { scanTries = 0; note = ""; startScan(); wifiDraw(); } return WR_STAY; }
       if (y >= 288 && pages() > 1) {
         if (x >= 396 && x < 436) wifiSwipe(false);
         else if (x >= 436) wifiSwipe(true);
@@ -315,6 +338,7 @@ WifiResult wifiTap(int x, int y) {
       } else if (y >= 162 && y < 212 && x >= 60 && x < 420) {
         int at = settings.findNet(selSsid);
         if (at >= 0) { settings.forgetNet(at); settings.save(); }
+        note = selSsid == connectedSsid() ? "Forgot " + selSsid + ". You stay on it until you join another." : "Forgot " + selSsid + ".";
         backToList();
       } else if (y >= 214 && y < 266) {
         backToList();

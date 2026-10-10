@@ -15,16 +15,23 @@ int batPercentFor(int mv) {
 }
 
 #ifndef MN_HOST
-static const int RING = 12;              // two minutes of readings, one every 10 seconds
+#include "mn_log.h"
+static const int RING = 30;              // five minutes of readings, one every 10 seconds
 static int ring[RING];
 static int nring = 0, smooth = 0;
 static bool present = false, charging = false;
-static uint32_t lastAt = 0;
+static uint32_t lastAt = 0, loggedAt = 0;
 
 static int readMv() {
   uint32_t mv = 0;
   for (int k = 0; k < 16; k++) mv += analogReadMilliVolts(PIN_BAT);
   return (int)(mv / 16) * 2;           // the board halves the battery voltage
+}
+
+static int avg(int from, int n) {
+  int t = 0;
+  for (int i = 0; i < n; i++) t += ring[from + i];
+  return t / n;
 }
 
 void batBegin() {
@@ -42,17 +49,35 @@ void batPoll() {
   if (nring < RING) ring[nring++] = mv;
   else { memmove(ring, ring + 1, sizeof(int) * (RING - 1)); ring[RING - 1] = mv; }
   smooth = smooth ? (smooth * 3 + mv) / 4 : mv;
-  // rising by 10 mV or more over the last minutes: charging; falling: not
-  if (nring >= 6) {
-    int a = (ring[0] + ring[1] + ring[2]) / 3, b = (ring[nring - 1] + ring[nring - 2] + ring[nring - 3]) / 3;
-    if (b - a >= 10) charging = true;
-    else if (a - b >= 10) charging = false;
+  // Charging, from how the voltage moves (the board has no charge-status wire):
+  //   plug in / unplug: a jump of 40 mV or more within half a minute
+  //   a long slow climb (a charge) or fall (running on the battery): 6 mV over five minutes
+  //   at the top (4.17 V or more): still on the charger
+  if (nring >= 4) {
+    int jump = ring[nring - 1] - ring[nring - 4];
+    if (jump >= 40) charging = true;
+    else if (jump <= -40) charging = false;
   }
-  if (smooth >= 4170) charging = true;   // full and still on the charger
+  if (nring >= RING) {
+    int slope = avg(RING - 5, 5) - avg(0, 5);
+    if (slope >= 6) charging = true;
+    else if (slope <= -6) charging = false;
+  }
+  if (smooth >= 4170) charging = true;
+  if (ms - loggedAt > 60000) {         // for tuning on a real board: see mini.local/log
+    loggedAt = ms;
+    mnLog("battery %d mV (%d%%, %s)", smooth, batPercent(), charging ? "charging" : "not charging");
+  }
 }
 
 bool batPresent() { return present; }
-int batPercent() { return present && smooth ? batPercentFor(smooth) : -1; }
+// While charging the charger lifts the reading (80 mV or so, less near full), so take that off
+int batPercent() {
+  if (!present || !smooth) return -1;
+  int mv = smooth;
+  if (charging) mv -= mv < 4120 ? 80 : (4200 - mv > 0 ? 4200 - mv : 0);
+  return batPercentFor(mv);
+}
 bool batCharging() { return present && charging; }
 int batMilliVolts() { return smooth; }
 #endif

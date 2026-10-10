@@ -79,6 +79,7 @@ struct Game {
   League league = L_NFL;
   bool mineHome = false;     // the favourite is the home side
   time_t start = 0;
+  char id[12] = "";          // ESPN's number for the game (for its per-game page)
   uint8_t period = 0;
   char clock[8] = "";        // "4:12"
   char detail[28] = "";      // ESPN's short status: "Top 5th", "End of 1st", "Final/OT"
