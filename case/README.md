@@ -77,3 +77,7 @@ snug round the port; the pocket behind the wall is untouched. The stylus holder 
 the unit is laid out), for an 86.87 x 4.7 mm stylus: a 4.9 mm round groove from the right end face to a closed stop 87.3 mm
 in (the stylus parks flush with the end), three ribs 26 mm apart (x 40-48, 66-74, 92-100) all inside its length, with the
 stretch beyond the last rib left clear so the stylus's bump can be hooked with a fingernail.
+
+Stylus fit test (Oct 11): the 4.9 mm groove was too tight for the 4.7 mm stylus (the pointed tip went in, the body jammed).
+stylus_test.py makes a strip of six short pieces of the stylus wall with grooves of 5.1, 5.3, 5.5, 5.7, 5.9 and 6.1 mm
+(same rib and wall as the case); print it, try the stylus in each, and the best width goes into BORE_R in build_case.py.
