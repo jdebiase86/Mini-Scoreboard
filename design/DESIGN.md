@@ -594,6 +594,14 @@ once if the list comes back empty or tiny; show "Scanning..." with a count so it
 and the log lives in memory that a power-off or a few restarts wipes). Fix with the crash finder: save the last 10 restart reasons and the last
 ~20 log lines to flash at every restart (not just hourly), and show them on the About page ("Last restarts"), so one bad moment is never lost.
 
+(14) About page "last log lines before the restart" (Joe, Oct 11, photo): a join of a network that was not around failed after 7 s ("couldn't join (1)"),
+16 s later the automatic rescan said "0 networks in range" at home where the home network is on, and a minute later typing the home network
+under Other joined in 2 s (then the board restarted on purpose after joining). So the scan itself came back empty right after a failed join:
+the radio was still retrying the failed network (auto-reconnect) and a scan started during that returns nothing. This is the real cause of the
+missing networks, on top of the 24-entry cap (12). Fix: before scanning, WiFi.setAutoReconnect(false) and WiFi.disconnect(true, false),
+wait a moment, scan; if the scan returns 0 retry up to 3 times with a pause; turn auto-reconnect back on only for a normal join.
+(Keep Wi-Fi names out of the repo; the photo stays on Joe's phone.)
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
