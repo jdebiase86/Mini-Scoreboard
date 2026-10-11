@@ -569,6 +569,14 @@ the TLS memory is already reserved, and free the ~7 KB log ring and other static
 Also draw the stored 76 px logo scaled up as a stopgap until the 112 px one arrives, instead of letters.
 Stylus: the groove that fit well was the second smallest on the test strip, 5.3 mm (BORE_R 2.65).
 
+(10) Halftime shows as live (Joe, Oct 11, Jaguars game): ESPN keeps the game state "in" through halftime, and the mini only looks at that
+(mn_espn.cpp ~line 265), so the LIVE tag, the field with the red zone and the last play stay up from the final play of the half.
+Fix: read the status name (STATUS_HALFTIME, or shortDetail starting "Half") and treat it as its own look: a HALFTIME banner in place of LIVE,
+no field / red zone / down strip / last play button, the score and the stats kept, and a slower poll until the clock restarts.
+Same for end of quarter, delays and the two-minute break between periods if their detail text carries stale play data.
+Hotspot (Oct 11): a phone hotspot was not found until "Maximize Compatibility" (2.4 GHz) was on; it then joined and rejoined on its own.
+Add a short tip to the Wi-Fi page about 2.4 GHz and Maximize Compatibility.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
