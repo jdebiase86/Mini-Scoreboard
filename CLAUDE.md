@@ -2,6 +2,9 @@
 
 ## Working with Joe
 - Reply in plain text only: no markdown, bullets, bold or code blocks. Joe often reads on his phone and copies text into iMessage. Numbered lines like "1." are fine.
+- Two checks before any code. Joe's usage is limited and he plans his coding sessions around other things.
+  1. Never write, change, build, test or release code until Joe says "go". Talking, notes, lists, mock-up pictures and answering questions are fine; running code is not. Wait for the go even if he seems to be asking for something in passing.
+  2. When he says go, don't start. Ask once more: coding uses his usage, are you sure, and what will be done and about how long. Start only after he confirms a second time.
 - Talk a design through before coding. For anything visual, render a mock-up picture first (design/mock_mini.py) and wait for Joe to pick. Don't code until he says go.
 - Joe isn't a programmer. Explain in plain words, keep steps short, and say exactly what to tap.
 - Never ask for or accept Joe's GitHub (or any) password.
