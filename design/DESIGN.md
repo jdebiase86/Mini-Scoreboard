@@ -602,6 +602,15 @@ missing networks, on top of the 24-entry cap (12). Fix: before scanning, WiFi.se
 wait a moment, scan; if the scan returns 0 retry up to 3 times with a pause; turn auto-reconnect back on only for a normal join.
 (Keep Wi-Fi names out of the repo; the photo stays on Joe's phone.)
 
+(15) Battery history read (Joe's mini.local/battery, Oct 10 16:39 to Oct 11 14:00, 5-minute samples):
+- Full charge: charging from 22:42 (3.67 V, 4%) reached 4.21 V / 100% at 06:17, and sat at 4.22-4.23 V (charger lifts the reading) until unplugged at 07:07; about 7.6 h for 4% to 100%.
+- Right after unplugging the reading falls to 4.15 V and the meter says 93-94%, not 100%: the top of the curve should be about 4.15 V = 100% on battery.
+- Run time on battery with the screen on and Wi-Fi: 4.15 V (94%) at 07:12 to 3.84 V (50%) at 14:00 = 6.8 h for 44 points, about 6.4 points an hour (about 15 h from full); Oct 10 evening was heavier, 54% to 4% in 6 h.
+- Same voltage, different percent: 4022 mV shows 80, 70, 71, 80 within 15 minutes; 3883 shows 54 next to 3872 at 60. The percent is not a clean function of voltage: single samples taken under load (screen bright, Wi-Fi sending) sag and the stepping/smoothing lets it through. Fix: sample the median of 5 readings a second apart, and take them only when the Wi-Fi radio is idle (or add a small sag allowance when the screen is bright).
+- The "charging guess" column flips to 1 for single samples while on battery (17:09, 17:29, 18:29, 19:21, 22:22, ...). Needs a rule: charging only when the voltage has risen 15 mV or more over 10 minutes twice in a row, or above 4.18 V.
+- Low end reads low: 3.73 V shows 20%, 3.68 V shows 9%, 3.61 V shows 4% and the mini kept running. A typical single-cell curve under light load: 4.15=100, 4.05=88, 3.95=72, 3.87=55, 3.80=42, 3.75=32, 3.70=22, 3.65=13, 3.60=7, 3.50=2, 3.40=0 (cutoff). Use it as the starting table, then correct it with a run-to-empty from Joe.
+- Gap in the log 19:36 to 20:27 (20% to 9%): the board was off or asleep; the first sample after a gap is marked "?".
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
