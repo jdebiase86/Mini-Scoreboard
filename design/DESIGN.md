@@ -560,6 +560,15 @@ look like a jump. Ask which levels she saw; show a "Level N" banner before each 
 
 Joe's picks (Oct 11, from mini_next.png): alert banner A (small black bar, yellow outline); gold coin; 24-card tiles are big enough.
 
+(9) Logos missing on the full-screen game views and for a newly picked favourite (Georgia), while the small tiles still show theirs
+(Joe, Oct 11). Cause found in mn_logo.cpp logoFetchOne: a download only starts when the biggest free block is 60,000 bytes or more;
+otherwise it re-queues and waits. At rest 0.13 has about 57 KB (it dips to 37-45 KB), so new logos (the 112 px game-screen size and any
+new team) never download; the 76 px tile logos that show were stored before. Fix with the memory give-back: lower the gate to what a
+download really needs (a 24 KB PNG buffer, the TLS pieces are checked separately in netTask), or fetch the logo from the net task where
+the TLS memory is already reserved, and free the ~7 KB log ring and other static buffers so the biggest block is back over 63 KB.
+Also draw the stored 76 px logo scaled up as a stopgap until the 112 px one arrives, instead of letters.
+Stylus: the groove that fit well was the second smallest on the test strip, 5.3 mm (BORE_R 2.65).
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
