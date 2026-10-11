@@ -590,6 +590,10 @@ the list keeps the first 24 networks the scan reports (MAX_APS) and only sorts t
 network can be dropped before it is ever compared. Fix: keep the strongest, replacing the weakest when full (and allow ~40); scan again
 once if the list comes back empty or tiny; show "Scanning..." with a count so it is clear it finished. The same list serves the hotspot case.
 
+(13) The log was empty when Joe looked (Oct 11 evening) because the board restarted several times since the hotspot trouble (joining a network restarts it,
+and the log lives in memory that a power-off or a few restarts wipes). Fix with the crash finder: save the last 10 restart reasons and the last
+~20 log lines to flash at every restart (not just hourly), and show them on the About page ("Last restarts"), so one bad moment is never lost.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
