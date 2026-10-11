@@ -88,7 +88,19 @@ static void lines() {
   lcd.fillRect(0, 36, 480, 284, C_BG);
   uiText(F_B12, "THE LAST LOG LINES BEFORE THE RESTART", 12, 48, C_GREY, C_BG, middle_left);
   int n = diagPrevLineCount();
-  if (!n) { uiText(F_M15, "Nothing kept (the power was cut, or this is the first start).", 12, 90, C_GREY, C_BG, middle_left); return; }
+  if (!n) {   // nothing from the run just before (the power was cut): the restarts kept in flash instead
+    lcd.fillRect(0, 36, 480, 284, C_BG);
+    uiText(F_B12, "THE LAST RESTARTS (NEWEST FIRST)", 12, 48, C_GREY, C_BG, middle_left);
+    int hn = diagRestartCount();
+    if (!hn) { uiText(F_M15, "Nothing kept yet.", 12, 90, C_GREY, C_BG, middle_left); return; }
+    for (int i = 0; i < hn && i < 10; i++) {
+      String t = diagRestartLine(i);
+      useFont(F_S13);
+      while (t.length() > 6 && lcd.textWidth(t.c_str()) > 456) t = t.substring(0, t.length() - 1);
+      uiText(F_S13, t, 12, 70 + i * 24, diagRestartBadAt(i) ? C_RED : C_WHITE, C_BG, middle_left);
+    }
+    return;
+  }
   for (int i = 0; i < n; i++) {
     String s = diagPrevLine(i);
     useFont(F_S13);

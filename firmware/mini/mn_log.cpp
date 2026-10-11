@@ -2,7 +2,7 @@
 #include "mn_diag.h"
 #include <stdarg.h>
 
-static const int LINES = 60, LEN = 120;   // ~7 KB: no PSRAM on this board
+static const int LINES = 40, LEN = 100;   // 4 KB: no PSRAM on this board (the last 10 lines also go to flash at a restart)
 static char ring[LINES][LEN];
 static int head = 0, count = 0;
 static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;

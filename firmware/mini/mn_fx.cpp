@@ -348,7 +348,7 @@ static void confettiInit() {
   }
 }
 static void confettiStep() {
-  const uint16_t bg = stageCol ? stageCol : rgb(12, 22, 60);
+  const uint16_t bg = stageCol;
   for (int i = 0; i < nbits; i++) {
     Bit& b = bits[i];
     if (b.y >= 0) lcd.fillRect(b.x, b.y, b.w, b.h, bg);
@@ -586,7 +586,7 @@ static bool bigStep(uint32_t t) {
         lcd.fillRect(350, 64, 5, 111, C_YELLOW); lcd.fillRect(450, 64, 5, 111, C_YELLOW);
       };
       if (stage < 0) {
-        stageCol = rgb(5, 9, 8); lcd.fillScreen(stageCol);
+        stageCol = BLK; lcd.fillScreen(stageCol);
         lcd.fillRect(0, 282, 480, 38, GROUND); lcd.fillRect(0, 282, 480, 3, rgb(90, 170, 100));
         posts();
         uiText(F_B24, "FIELD GOAL TRY", CX, 26, C_YELLOW, stageCol, middle_center);
@@ -624,7 +624,7 @@ static bool bigStep(uint32_t t) {
       }
       if (stage == 1 && t >= K1 + 220) {
         stage = 2;
-        if (good) { stageCol = rgb(5, 9, 8); blast(402, 120, 1.4f); finale(spec.word, spec.sub); }
+        if (good) { stageCol = BLK; blast(402, 120, 1.4f); finale(spec.word, spec.sub); }
         else { tapeScene(true); captions(t); }
       }
       if (stage >= 2 && good) {
@@ -636,7 +636,7 @@ static bool bigStep(uint32_t t) {
     }
     case FX_TOUCHDOWN: {
       if (stage < 0) {
-        stageCol = rgb(4, 6, 12); lcd.fillScreen(C_WHITE); stage = 0; nsp = 0;
+        stageCol = BLK; lcd.fillScreen(C_WHITE); stage = 0; nsp = 0;
         for (Ring& q : rg) q.used = false;
         pX0 = pX1 = pY0 = pY1 = 0;
       }
@@ -678,7 +678,7 @@ static bool bigStep(uint32_t t) {
       } else if (t < 2260) {
         if (stage < 1) { lcd.fillScreen(C_WHITE); stage = 1; }
       } else {
-        if (stage < 2) { stageCol = rgb(12, 4, 6); finale("GOAL!", spec.sub); stage = 2; }
+        if (stage < 2) { stageCol = BLK; finale("GOAL!", spec.sub); stage = 2; }
         bool alt = (t / 250) % 2;
         if ((t / 250) != altG) {
           altG = t / 250;
@@ -737,7 +737,7 @@ static bool bigStep(uint32_t t) {
       return true;
     }
     case FX_THREE: {
-      if (stage < 0) { courtBackdrop(); stageCol = rgb(6, 6, 10); stage = 0; nsp = 0; pX0 = pX1 = pY0 = pY1 = 0; }
+      if (stage < 0) { courtBackdrop(); stageCol = BLK; stage = 0; nsp = 0; pX0 = pX1 = pY0 = pY1 = 0; }
       if (t < 1850) {
         static int lx[9], ly[9], nl = 0;
         if (t <= 40) nl = 0;
@@ -765,7 +765,7 @@ static bool bigStep(uint32_t t) {
         return true;
       }
       if (stage <= 1) {
-        stageCol = rgb(6, 6, 10); lcd.fillScreen(stageCol); stage = 2; blast(CX, 130, 1.2f);
+        stageCol = BLK; lcd.fillScreen(stageCol); stage = 2; blast(CX, 130, 1.2f);
         pX0 = 90; pX1 = 390; pY0 = 110; pY1 = 312;
       }
       if (t < 3300 && t > nxtB) { blast(40 + frnd() * 400, 30 + frnd() * 250, 0.6f); nxtB = t + 220 + (uint32_t)(frnd() * 160); }
@@ -781,7 +781,7 @@ static bool bigStep(uint32_t t) {
       return true;
     }
     case FX_WIN: {
-      if (stage < 0) { stageCol = rgb(8, 14, 40); lcd.fillScreen(stageCol); stage = 0; nsp = 0; confettiInit();
+      if (stage < 0) { stageCol = BLK; lcd.fillScreen(stageCol); stage = 0; nsp = 0; confettiInit();
         if (!logoDraw(spec.mine, CX, 112, 112, stageCol)) uiText(F_B36, spec.mine.abbr, CX, 112, C_WHITE, stageCol, middle_center);
         word(spec.word, 232, C_WHITE); pill(spec.sub, 292); pX0 = 90; pX1 = 390; pY0 = 36; pY1 = 312; }
       if (t > nxtA && t < 4800) { blast(50 + frnd() * 380, 40 + frnd() * 150, 0.9f); nxtA = t + 300 + (uint32_t)(frnd() * 220); }

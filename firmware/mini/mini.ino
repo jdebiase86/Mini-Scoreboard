@@ -258,7 +258,7 @@ static void handleTap(int x, int y) {
       break;
     }
     case M_WIFI:
-      if (wifiTap(x, y) == WR_BACK) setMode(wifiFrom);
+      if (wifiTap(x, y) == WR_BACK) { wifiLeave(); setMode(wifiFrom); }
       break;
     case M_ABOUT:
       if (aboutTap(x, y, aboutData())) { if (aboutFrom == M_TEAM) autoAt = millis() + AUTO_MS; setMode(aboutFrom); }
@@ -401,13 +401,17 @@ static void watchdog() {
 
 // Carried somewhere else: with several remembered networks, look for one that's here
 static void roam() {
-  static uint32_t offlineSince = 0, lastTry2 = 0, lastKick = 0;
-  // one network only (a phone hotspot that went to sleep, say): ask again every minute
+  static uint32_t offlineSince = 0, lastTry2 = 0, lastKick = 0, lostAt = 0;
+  // one network only (a phone hotspot that went to sleep, say): ask again, every 12 s for the first two minutes
+  // (the hotspot is usually back quickly), then every minute
+  if (WiFi.status() == WL_CONNECTED) lostAt = 0;
+  else if (!lostAt) lostAt = millis() | 1;
   if (settings.nnets == 1 && mode != M_SETUP && mode != M_CONNECTING && mode != M_FALLBACK && mode != M_WIFI && !wifiBusy() &&
-      WiFi.status() != WL_CONNECTED && millis() > 60000 && millis() - lastKick > 60000) {
+      WiFi.status() != WL_CONNECTED && millis() > 20000 && millis() - lastKick > (millis() - lostAt < 120000 ? 12000UL : 60000UL)) {
     lastKick = millis();
     mnLog("Wi-Fi is gone: asking again");
-    WiFi.reconnect();
+    WiFi.disconnect(false, false);
+    WiFi.begin(settings.nets[0].ssid.c_str(), settings.nets[0].pass.c_str());   // a fresh look for it, not a retry of the old attempt
   }
   if (settings.nnets < 2 || wifiBusy() || mode == M_SETUP || mode == M_CONNECTING || mode == M_FALLBACK || mode == M_WIFI) return;
   if (WiFi.status() == WL_CONNECTED) { offlineSince = 0; return; }

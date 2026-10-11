@@ -17,9 +17,10 @@ struct FakeWiFi {
   void scanDelete() {}
   int RSSI(int i) { return found[i].rssi; }
   int encryptionType(int i) { return found[i].auth; }
-  void disconnect(bool = false) {}
+  void disconnect(bool = false, bool = false) {}
   void begin(const char*, const char*) {}
   void setAutoReconnect(bool) {}
+  bool reconnect() { return true; }
 };
 extern FakeWiFi WiFi;
 struct FakeEsp { void restart() {} };

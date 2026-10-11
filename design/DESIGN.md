@@ -611,6 +611,16 @@ wait a moment, scan; if the scan returns 0 retry up to 3 times with a pause; tur
 - Low end reads low: 3.73 V shows 20%, 3.68 V shows 9%, 3.61 V shows 4% and the mini kept running. A typical single-cell curve under light load: 4.15=100, 4.05=88, 3.95=72, 3.87=55, 3.80=42, 3.75=32, 3.70=22, 3.65=13, 3.60=7, 3.50=2, 3.40=0 (cutoff). Use it as the starting table, then correct it with a run-to-empty from Joe.
 - Gap in the log 19:36 to 20:27 (20% to 9%): the board was off or asleep; the first sample after a gap is marked "?".
 
+## v0.14 (Oct 11): Wi-Fi, logos, memory, halftime, restart history
+
+- Wi-Fi list: scanning first stops the background retrying (setAutoReconnect off, disconnect) and retries an empty scan up to three times; the list keeps the 40 strongest networks, replacing the weakest; leaving the page turns reconnecting back on (wifiLeave). One saved network that is lost: a fresh join every 12 s for two minutes, then every minute.
+- Logos: a download starts when the biggest free block is 36 KB (was 60 KB, never met since 0.13); the picture buffer is sized by Content-Length after the secure connection is up (was a fixed 24 KB first); a game-screen (112 px) logo that is not stored yet is drawn from the stored 76 px one, blown up, until the big one arrives; "no room" is retried, not written off for ten minutes.
+- Memory: log ring 60 x 120 down to 40 x 100 (static RAM 95.7 KB to 92.8 KB). The biggest free block can only be measured on the board (About page, MEMORY row); Joe to report it after a day.
+- Halftime: ESPN status STATUS_HALFTIME (or detail starting "Half") keeps the game live for polling but drops the field, red zone, down strip and last play; HALFTIME amber tag instead of LIVE (tile and game screen). Test: hosttest/test_half.cpp.
+- Restart history: the last ten restarts (number, reason, how long it ran, note) are saved in flash at every start; the log lines before a crash / stuck / power-dip restart are saved too. About, BEFORE RESTART page shows the list when the run before left no lines; mini.local/log shows the list, the crash lines and the log.
+- Animations: the dark stage colours are now one pure black (touchdown, field goal, goal, three, win), matching the word plates, so no bluish squares; the night ballpark keeps its navy.
+- Not in 0.14: battery meter, name entry, game changes, banners (next).
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap

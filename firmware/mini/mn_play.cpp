@@ -93,6 +93,8 @@ static String periodWord(const Game& g) {
   }
 }
 
+static bool atHalf(const Game& g) { return g.state == GS_LIVE && !strncmp(g.detail, "Half", 4); }
+
 static bool special(const Game& g) {   // ESPN's own words say more than a period and a clock
   return g.league == L_MLB || strstr(g.detail, "End") || strstr(g.detail, "Half") || strstr(g.detail, "Delay") ||
          strstr(g.detail, "Postponed") || strstr(g.detail, "Suspend") || strstr(g.detail, "Cancel") ||
@@ -185,7 +187,7 @@ void playTile(int x0, int y0, int x1, int y1, int team, const Game& g, bool know
   if (known && g.state != GS_NONE) haveLogo = logoDraw(g.mine(), cx, y0 + 46, 76, C_TILE);
   else if (known) { TeamSide s; haveLogo = sideOf(team, s) && logoDraw(s, cx, y0 + 46, 76, C_TILE); }
   if (!haveLogo) letters(TEAMS[team].abbr, cx, y0 + 46, F_B36, C_TILE);
-  if (live) pill(x0 + 8, y0 + 8, "LIVE", C_RED, C_WHITE);
+  if (live) pill(x0 + 8, y0 + 8, atHalf(g) ? "HALFTIME" : "LIVE", atHalf(g) ? rgb(200, 140, 20) : C_RED, C_WHITE);
 
   String big, small;
   uint16_t smallCol = C_GREY;
@@ -531,7 +533,7 @@ void playCardHold(const Game& g, uint32_t ms) {
 PlayHit playGameHit(int x, int y, const Game& g, bool known) {
   if (!known || g.state == GS_NONE) return PH_NONE;
   if (cardOn && x >= CX0 - 6 && x < CX1 + 6 && y >= CY0 - 6) return PH_CARD;
-  if (!cardOn && g.state == GS_LIVE && x < 134 && y >= 266) return PH_LASTPLAY;
+  if (!cardOn && g.state == GS_LIVE && !atHalf(g) && x < 134 && y >= 266) return PH_LASTPLAY;
   if (!cardOn && autoTagOn && x >= 240 && y >= 270) return PH_AUTOTAG;
   if (y < 40 || (y >= 246 && g.state != GS_PRE)) return PH_NONE;   // (an upcoming game: the GAME DETAILS button is down there too)
   if (g.state == GS_LIVE && g.fb.has) {
@@ -550,7 +552,7 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     uiHomeButton();
     lastAutoSecs = autoSecs;
     staleShown = -1;
-    lastBtnOn = known && g.state == GS_LIVE;
+    lastBtnOn = known && g.state == GS_LIVE && !atHalf(g);
     if (lastBtnOn) drawLastBtn();
     playAutoTag(autoSecs);
   }
@@ -575,7 +577,7 @@ void playGame(int team, const Game& g, bool known, int autoSecs, int mode) {
     // the top bar: what kind of game, which league, who's showing it
     uint16_t blue = rgb(30, 80, 170);
     int pw;
-    if (g.state == GS_LIVE) pw = pill(10, 8, "LIVE", C_RED, C_WHITE);
+    if (g.state == GS_LIVE) pw = atHalf(g) ? pill(10, 8, "HALFTIME", rgb(200, 140, 20), C_WHITE) : pill(10, 8, "LIVE", C_RED, C_WHITE);
     else if (g.state == GS_POST) pw = pill(10, 8, "FINAL", rgb(60, 66, 82), C_WHITE);
     else {
       int dd = dayNumber(g.start) - dayNumber(now);

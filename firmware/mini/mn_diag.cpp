@@ -51,10 +51,45 @@ void saveHistory() {
   if (p.begin("diag", false)) { p.putBytes("bat", buf, sizeof(rtc.bat) + 4); p.end(); }
   free(buf);
 }
+
+// the last ten restarts, kept in flash (written at every start, so a bad moment is never lost to the next restart)
+struct Rec { uint32_t n; uint8_t reason; uint8_t bad; uint16_t ranMins; char note[28]; };
+const int HIST_N = 10;
+Rec hist[HIST_N];
+int histCount = 0;                      // newest last
+struct Crash { uint32_t n; uint8_t count; char lines[DIAG_LINES][DIAG_LEN]; };
+
+String reasonText(uint8_t r, const char* note) {
+  switch ((esp_reset_reason_t)r) {
+    case ESP_RST_POWERON: return "Power on";
+    case ESP_RST_SW: return note[0] ? String("On purpose - ") + note : String("Software restart");
+    case ESP_RST_PANIC: return "CRASH";
+    case ESP_RST_INT_WDT: case ESP_RST_TASK_WDT: case ESP_RST_WDT: return "STUCK (watchdog)";
+    case ESP_RST_BROWNOUT: return "Power dip";
+    default: return "Restart (unknown)";
+  }
+}
+
+void loadRestarts() {
+  Preferences p;
+  if (!p.begin("diag", true)) return;
+  size_t n = p.getBytesLength("rst");
+  if (n && n % sizeof(Rec) == 0 && n <= sizeof(hist)) { p.getBytes("rst", hist, n); histCount = n / sizeof(Rec); }
+  p.end();
+}
+
+void saveRestarts(const Crash* crash) {   // the crash record is built and kept in flash only; it is not held in memory
+  Preferences p;
+  if (!p.begin("diag", false)) return;
+  p.putBytes("rst", hist, histCount * sizeof(Rec));
+  if (crash) p.putBytes("crash", crash, sizeof(Crash));
+  p.end();
+}
 }  // namespace
 
 void diagBegin() {
   esp_reset_reason_t r = esp_reset_reason();
+  esp_reset_reason_t r_ = r;
   bool fresh = r == ESP_RST_POWERON || rtc.magic != MAGIC || rtc.lhead >= DIAG_LINES || rtc.lcount > DIAG_LINES ||
                rtc.bhead >= DIAG_BAT_N || rtc.bcount > DIAG_BAT_N;
   prevReason = r;
@@ -70,6 +105,24 @@ void diagBegin() {
     memset(&rtc, 0, sizeof(rtc));
     rtc.magic = MAGIC;
     loadHistory();
+  }
+  loadRestarts();
+  {   // add the run that just ended to the flash history
+    uint32_t n = (histCount ? hist[histCount - 1].n : 0) + 1;
+    Rec r = {};
+    r.n = n; r.reason = (uint8_t)r_; r.ranMins = (uint16_t)(prevRun / 60 > 65535 ? 65535 : prevRun / 60);
+    strncpy(r.note, fresh ? "" : prevNote, sizeof(r.note) - 1);
+    r.bad = diagRestartBad();
+    if (histCount == HIST_N) { memmove(hist, hist + 1, sizeof(Rec) * (HIST_N - 1)); histCount--; }
+    hist[histCount++] = r;
+    bool bad = r.bad && !fresh && prevCount > 0;
+    Crash* cr = bad ? (Crash*)calloc(1, sizeof(Crash)) : nullptr;
+    if (cr) {
+      cr->n = n; cr->count = (uint8_t)prevCount;
+      for (int i = 0; i < prevCount; i++) memcpy(cr->lines[i], prevLines[i], DIAG_LEN);
+    }
+    saveRestarts(cr);
+    free(cr);
   }
   rtc.boots++;
   rtc.aliveSecs = 0;
@@ -160,4 +213,29 @@ String diagBatCsv() {
     out += line;
   }
   return out;
+}
+
+int diagRestartCount() { return histCount; }
+String diagRestartLine(int i) {   // 0 = the newest
+  if (i < 0 || i >= histCount) return "";
+  const Rec& r = hist[histCount - 1 - i];
+  String s = String("#") + String(r.n) + "  " + reasonText(r.reason, r.note);
+  if (r.ranMins) s += String("  (ran ") + (r.ranMins >= 60 ? String(r.ranMins / 60) + "h " + String(r.ranMins % 60) + "m" : String(r.ranMins) + "m") + ")";
+  return s;
+}
+bool diagRestartBadAt(int i) { return i >= 0 && i < histCount && hist[histCount - 1 - i].bad; }
+String diagCrashText() {   // the log lines before the last crash or stuck restart (read back from flash when asked for)
+  Preferences p;
+  if (!p.begin("diag", true)) return "";
+  String t;
+  if (p.getBytesLength("crash") == sizeof(Crash)) {
+    Crash* cr = (Crash*)malloc(sizeof(Crash));
+    if (cr && p.getBytes("crash", cr, sizeof(Crash)) == sizeof(Crash)) {
+      t = String("LOG BEFORE THE LAST BAD RESTART (#") + String(cr->n) + ")\n";
+      for (int i = 0; i < cr->count && i < DIAG_LINES; i++) { cr->lines[i][DIAG_LEN - 1] = 0; t += String(cr->lines[i]) + "\n"; }
+    }
+    free(cr);
+  }
+  p.end();
+  return t;
 }
