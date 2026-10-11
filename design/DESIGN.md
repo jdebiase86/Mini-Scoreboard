@@ -502,6 +502,125 @@ hoop, for the field goal a side view with the ball arcing to big yellow posts (f
 win use the same pieces. Sparks never draw over the logo and words (a protected box), and rubbing out never touches it. Pictures:
 design/mini_fx_big.png. The banners (rays, stripes, tape, bricks) are unchanged.
 
+## Feedback on 0.13 (Joe, Oct 11; to fix in the next update, nothing coded yet)
+Joe's photos of the real screen (Try the animations: field goal, three, win):
+- The stage that should be black / dark navy shows as bright blue, and the plates behind the words as a darker blue; the court looks
+  washed-out blue-grey. Check how colours are given to fillScreen / fillRect (uint16_t raw vs rgb565_t) and the colour mode; ask Joe
+  whether the red goal strobe and the touchdown look right.
+- The logo did not draw (letters NYG): the 112 px logo is not stored until a game screen has asked for it. Use a stored size, or fetch
+  it ahead.
+- Confetti leaves ghost shapes behind (pieces not fully rubbed out, the pattern hangs round the logo). Erase with the exact colour or
+  draw confetti like the sparks.
+- Three: the ball does not go through the basket (it ends beside / below the net). Aim at the middle of the rim, drop through, and draw
+  the net over the ball.
+- Home run: make it look like the LED board's baseball diamond (sb_fx.cpp drawPark): seen from behind home plate, sky with light
+  towers, crowd, wall with a yellow line and foul poles, striped grass, the dirt diamond with bases and mound, chalk foul lines, the
+  batter at the plate, the ball flying up over the wall.
+
+Another from Joe (Oct 11): the win chance bar on a live football game screen: the "45%" / "55%" labels at the ends and "WIN CHANCE" in the
+middle show as blocks taller than the 14 px bar (the text's background box is taller than the bar), so the bar looks lumpy. Fix: make the
+bar tall enough for the text (about 22 px) or draw the labels without a background box, so the bar is one even strip.
+Joe will run 0.13 through Sunday's NFL games and send more; nothing is being coded until he says.
+
+From Joe watching a college game (Oct 11): when the other team punted, the animation showed "ARK" letters instead of a logo and used the
+favourite team's colours (a mix-up). Possible causes to check: (1) both teams in a game are favourites, so the same play fires twice,
+once from each side (PUNT-ASTIC for one, NO PUNT INTENDED for the other); fix by playing one animation per play (key: game id + play id),
+(2) the logo only shows once its 112 px file is stored (letters until then), (3) wording: for "they punt" the banner shows OUR logo with
+"<them> HAVE TO PUNT". Ask Joe which words were on screen and whether the other team is also a favourite.
+Memory: the biggest free piece fell from 63 KB (0.10) to 57 KB at rest (dips to 37 KB while fetching): give some back (trim static
+buffers) in the next update.
+
+More from Joe (Oct 11): (1) the blacks in the animations are not all the same black: the stage colours I used (4,6,12), (6,6,10),
+(8,14,40) are slightly blue next to the pure black of the word plates, so the plates show as squares. Fix: one black for the stage and
+the plates (or draw plates in the stage colour). (2) The punt banner showed the other team's letters ("ARK") in the favourite's colours:
+Arkansas is not a favourite, so its logo is not stored; fetch the opposing team's logo (76 px) once its game goes live, and use letters
+only until it arrives. (3) Memory: give back some without losing anything (log ring 60 x 120 B = 7 KB, the spark / queue / about
+buffers, the games' statics; target the biggest free block back to 63 KB).
+
+More from Joe (Oct 11): (1) name entry when a game's high score is set (top 5 per game, last name prefilled, clear-scores button); picture first.
+(2) Penalty Kick is too easy: the keeper dives away from the shot side 2 times in 3 even on a centre shot (mn_g_shoot.cpp ~line 182),
+so shooting down the middle nearly always scores. Fix: when the keeper has not "guessed", pick a side at random (and sometimes stay
+central), scale the guess chance up with level, and make the keeper reach wider. (3) Rename "Cheer Simon" to "Simon" (title bar,
+game list, GAME_SIMON name). (4) Basket Toss icon: the flyer pokes out above the tile; lower or shrink it.
+
+(5) Heads and tails: make the coin look like a real quarter (silver rim with reeding, an eagle-style head side and a tails side, shine, spinning edge-on as it flips); picture first.
+
+(6) Logo Match: bigger boards after level 8 (8, 10, 12 pairs; 24 cards = 6 x 4, ~70 px tiles); mix plain symbols in with the logos so the
+board fills faster; picture of the 24-card board first.
+(7) Alerts while playing a game: today animations only play on HOME/TEAM/DETAIL/TICKER/ABOUT (mini.ino ~line 479), and netWatch is not
+called in the games, so live games are polled slowly and events go stale (45 s). Idea: a small banner slides in at the top of the game
+screen for ~4 s (team logo, short words like "TOUCHDOWN - Team"), game keeps running, tap to dismiss; the big animation is skipped
+inside games; watch live favourites while a game is open (pause-safe: games with a timer should not be punished). Picture first.
+
+(8) Logo Match is too hard at level 9 (daughter): levels 8 and up all use the last row, 6 pairs in 11 moves and 35 s (best possible is 6
+moves), so it is nearly impossible. Fix: ease the limits (e.g. 14-16 moves, 50-60 s at 6 pairs), spread the squeeze over more levels,
+and then add the bigger boards as a ramp (more pairs with matching moves/seconds). Possible "skipped level": no bug found in the
+level counter (it adds 1 per win); level 1 -> 2 -> 3 change the board shape (6, 8, 12 cards) and level 4 adds a move limit, which can
+look like a jump. Ask which levels she saw; show a "Level N" banner before each deal to make it obvious.
+
+Joe's picks (Oct 11, from mini_next.png): alert banner A (small black bar, yellow outline); gold coin; 24-card tiles are big enough.
+
+(9) Logos missing on the full-screen game views and for a newly picked favourite (Georgia), while the small tiles still show theirs
+(Joe, Oct 11). Cause found in mn_logo.cpp logoFetchOne: a download only starts when the biggest free block is 60,000 bytes or more;
+otherwise it re-queues and waits. At rest 0.13 has about 57 KB (it dips to 37-45 KB), so new logos (the 112 px game-screen size and any
+new team) never download; the 76 px tile logos that show were stored before. Fix with the memory give-back: lower the gate to what a
+download really needs (a 24 KB PNG buffer, the TLS pieces are checked separately in netTask), or fetch the logo from the net task where
+the TLS memory is already reserved, and free the ~7 KB log ring and other static buffers so the biggest block is back over 63 KB.
+Also draw the stored 76 px logo scaled up as a stopgap until the 112 px one arrives, instead of letters.
+Stylus: the groove that fit well was the second smallest on the test strip, 5.3 mm (BORE_R 2.65).
+
+(10) Halftime shows as live (Joe, Oct 11, Jaguars game): ESPN keeps the game state "in" through halftime, and the mini only looks at that
+(mn_espn.cpp ~line 265), so the LIVE tag, the field with the red zone and the last play stay up from the final play of the half.
+Fix: read the status name (STATUS_HALFTIME, or shortDetail starting "Half") and treat it as its own look: a HALFTIME banner in place of LIVE,
+no field / red zone / down strip / last play button, the score and the stats kept, and a slower poll until the clock restarts.
+Same for end of quarter, delays and the two-minute break between periods if their detail text carries stale play data.
+Hotspot (Oct 11): a phone hotspot was not found until "Maximize Compatibility" (2.4 GHz) was on; it then joined and rejoined on its own.
+Add a short tip to the Wi-Fi page about 2.4 GHz and Maximize Compatibility.
+
+(11) Hotspot lost, then a rescan from the Wi-Fi page restarted the board (Joe, Oct 11, in the car). Not yet explained: the live-game watchdog only
+acts while Wi-Fi is connected, so it is not that one; the restart reason on the About page (and mini.local/log) will say whether it was a
+crash. Suspects: (a) the Wi-Fi page starts a background scan (mn_wifi.cpp startScan) while the radio is still retrying the lost network
+(mini.ino roam() calls WiFi.reconnect() every minute), and the two fight; fix: stop the retry (WiFi.disconnect) while the page scans and
+resume after, and retry a failed scan once; (b) low memory during the scan + TLS (see the memory item). Also: after a drop the board is
+slow to rejoin a hotspot that comes back; try the saved network more often at first (every 10-15 s for two minutes, then every minute),
+and show a clear "looking for <name>" line with a Try now button instead of the setup screen.
+
+(12) Home Wi-Fi missing from the scan list but joined fine when typed under "Other network" (Joe, Oct 11, at home). Found in mn_wifi.cpp gather():
+the list keeps the first 24 networks the scan reports (MAX_APS) and only sorts them by strength afterwards, so in a busy area a strong
+network can be dropped before it is ever compared. Fix: keep the strongest, replacing the weakest when full (and allow ~40); scan again
+once if the list comes back empty or tiny; show "Scanning..." with a count so it is clear it finished. The same list serves the hotspot case.
+
+(13) The log was empty when Joe looked (Oct 11 evening) because the board restarted several times since the hotspot trouble (joining a network restarts it,
+and the log lives in memory that a power-off or a few restarts wipes). Fix with the crash finder: save the last 10 restart reasons and the last
+~20 log lines to flash at every restart (not just hourly), and show them on the About page ("Last restarts"), so one bad moment is never lost.
+
+(14) About page "last log lines before the restart" (Joe, Oct 11, photo): a join of a network that was not around failed after 7 s ("couldn't join (1)"),
+16 s later the automatic rescan said "0 networks in range" at home where the home network is on, and a minute later typing the home network
+under Other joined in 2 s (then the board restarted on purpose after joining). So the scan itself came back empty right after a failed join:
+the radio was still retrying the failed network (auto-reconnect) and a scan started during that returns nothing. This is the real cause of the
+missing networks, on top of the 24-entry cap (12). Fix: before scanning, WiFi.setAutoReconnect(false) and WiFi.disconnect(true, false),
+wait a moment, scan; if the scan returns 0 retry up to 3 times with a pause; turn auto-reconnect back on only for a normal join.
+(Keep Wi-Fi names out of the repo; the photo stays on Joe's phone.)
+
+(15) Battery history read (Joe's mini.local/battery, Oct 10 16:39 to Oct 11 14:00, 5-minute samples):
+- Full charge: charging from 22:42 (3.67 V, 4%) reached 4.21 V / 100% at 06:17, and sat at 4.22-4.23 V (charger lifts the reading) until unplugged at 07:07; about 7.6 h for 4% to 100%.
+- Right after unplugging the reading falls to 4.15 V and the meter says 93-94%, not 100%: the top of the curve should be about 4.15 V = 100% on battery.
+- Run time on battery with the screen on and Wi-Fi: 4.15 V (94%) at 07:12 to 3.84 V (50%) at 14:00 = 6.8 h for 44 points, about 6.4 points an hour (about 15 h from full); Oct 10 evening was heavier, 54% to 4% in 6 h.
+- Same voltage, different percent: 4022 mV shows 80, 70, 71, 80 within 15 minutes; 3883 shows 54 next to 3872 at 60. The percent is not a clean function of voltage: single samples taken under load (screen bright, Wi-Fi sending) sag and the stepping/smoothing lets it through. Fix: sample the median of 5 readings a second apart, and take them only when the Wi-Fi radio is idle (or add a small sag allowance when the screen is bright).
+- The "charging guess" column flips to 1 for single samples while on battery (17:09, 17:29, 18:29, 19:21, 22:22, ...). Needs a rule: charging only when the voltage has risen 15 mV or more over 10 minutes twice in a row, or above 4.18 V.
+- Low end reads low: 3.73 V shows 20%, 3.68 V shows 9%, 3.61 V shows 4% and the mini kept running. A typical single-cell curve under light load: 4.15=100, 4.05=88, 3.95=72, 3.87=55, 3.80=42, 3.75=32, 3.70=22, 3.65=13, 3.60=7, 3.50=2, 3.40=0 (cutoff). Use it as the starting table, then correct it with a run-to-empty from Joe.
+- Gap in the log 19:36 to 20:27 (20% to 9%): the board was off or asleep; the first sample after a gap is marked "?".
+
+## v0.14 (Oct 11): Wi-Fi, logos, memory, halftime, restart history
+
+- Wi-Fi list: scanning first stops the background retrying (setAutoReconnect off, disconnect) and retries an empty scan up to three times; the list keeps the 40 strongest networks, replacing the weakest; leaving the page turns reconnecting back on (wifiLeave). One saved network that is lost: a fresh join every 12 s for two minutes, then every minute.
+- Logos: a download starts when the biggest free block is 36 KB (was 60 KB, never met since 0.13); the picture buffer is sized by Content-Length after the secure connection is up (was a fixed 24 KB first); a game-screen (112 px) logo that is not stored yet is drawn from the stored 76 px one, blown up, until the big one arrives; "no room" is retried, not written off for ten minutes.
+- Memory: log ring 60 x 120 down to 40 x 100 (static RAM 95.7 KB to 92.8 KB). The biggest free block can only be measured on the board (About page, MEMORY row); Joe to report it after a day.
+- Halftime: ESPN status STATUS_HALFTIME (or detail starting "Half") keeps the game live for polling but drops the field, red zone, down strip and last play; HALFTIME amber tag instead of LIVE (tile and game screen). Test: hosttest/test_half.cpp.
+- Restart history: the last ten restarts (number, reason, how long it ran, note) are saved in flash at every start; the log lines before a crash / stuck / power-dip restart are saved too. About, BEFORE RESTART page shows the list when the run before left no lines; mini.local/log shows the list, the crash lines and the log.
+- Animations: the dark stage colours are now one pure black (touchdown, field goal, goal, three, win), matching the word plates, so no bluish squares; the night ballpark keeps its navy.
+- Not in 0.14: battery meter, name entry, game changes, banners (next).
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap

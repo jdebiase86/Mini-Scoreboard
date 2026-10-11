@@ -20,6 +20,11 @@ String diagRestartWhy();                           // "Crash", "Stuck (the watch
 bool diagRestartBad();                             // a crash, a stuck program or a power dip
 uint32_t diagPrevRunSecs();                        // how long the run before it lasted (0 = unknown)
 uint32_t diagBoots();
+// the last ten restarts, newest first (kept in flash), and the log lines before the last crash or stuck restart
+int diagRestartCount();
+String diagRestartLine(int i);
+bool diagRestartBadAt(int i);
+String diagCrashText();                            // the log before the last bad restart, read from flash ("" if none)
 int diagPrevLineCount();
 const char* diagPrevLine(int i);                   // oldest first
 

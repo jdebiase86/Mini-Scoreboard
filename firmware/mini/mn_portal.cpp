@@ -321,7 +321,14 @@ static void routes() {
   server.on("/screen", HTTP_GET, handleScreen);
   server.on("/fxtest", HTTP_GET, [] { server.send(netTestFx(server.arg("k").c_str()) ? 200 : 404, "text/plain", "ok"); });
   server.on("/battery", HTTP_GET, [] { server.send(200, "text/plain; charset=utf-8", diagBatCsv()); });
-  server.on("/log", HTTP_GET, [] { server.send(200, "text/plain; charset=utf-8", mnLogText()); });
+  server.on("/log", HTTP_GET, [] {
+    String t = "RESTARTS (newest first)\n";
+    for (int i = 0; i < diagRestartCount(); i++) t += diagRestartLine(i) + "\n";
+    String cr = diagCrashText();
+    if (cr.length()) t += "\n" + cr;
+    t += "\nLOG (this run)\n" + mnLogText();
+    server.send(200, "text/plain; charset=utf-8", t);
+  });
   server.on("/favicon.ico", HTTP_GET, [] { server.send(404, "text/plain", ""); });
   server.onNotFound([] {
     if (apOn) captive();

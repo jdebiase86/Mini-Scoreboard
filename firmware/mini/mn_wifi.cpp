@@ -8,7 +8,7 @@
 #include <WiFi.h>
 
 struct Ap { String ssid; int rssi; bool open; };
-static const int MAX_APS = 24;
+static const int MAX_APS = 40;
 static Ap aps[MAX_APS];
 static int nAps = 0;
 static bool scanning = false;
@@ -33,6 +33,9 @@ static int scanTries = 0;
 static String note;   // shown under the title until the next scan: "Forgot ..."
 
 static void startScan() {
+  // a scan started while the radio is still retrying a network comes back empty: stop the retrying first
+  WiFi.setAutoReconnect(false);
+  if (WiFi.status() != WL_CONNECTED) { WiFi.disconnect(false, false); delay(150); }
   WiFi.scanDelete();
   WiFi.scanNetworks(true, false);   // in the background; the screen keeps working
   scanning = true;
@@ -56,7 +59,10 @@ static void gather() {
     int dup = -1;
     for (int k = 0; k < nAps; k++) if (aps[k].ssid == s) dup = k;
     if (dup >= 0) { if (rssi > aps[dup].rssi) { aps[dup].rssi = rssi; aps[dup].open = open; } continue; }
-    if (nAps < MAX_APS) aps[nAps++] = {s, rssi, open};
+    if (nAps < MAX_APS) { aps[nAps++] = {s, rssi, open}; continue; }
+    int weak = 0;   // full: the new one takes the place of the weakest, if it is stronger
+    for (int k = 1; k < nAps; k++) if (aps[k].rssi < aps[weak].rssi) weak = k;
+    if (rssi > aps[weak].rssi) aps[weak] = {s, rssi, open};
   }
   WiFi.scanDelete();
   scanning = false;
@@ -219,6 +225,11 @@ static void showMsg(const char* title, const String& line) {
   uiMessage(title, line.c_str(), nullptr, C_RED);
 }
 
+void wifiLeave() {   // off the Wi-Fi screen: the radio goes back to looking after the connection by itself
+  WiFi.setAutoReconnect(true);
+  if (WiFi.status() != WL_CONNECTED && settings.nnets > 0 && state != S_JOINING) WiFi.reconnect();
+}
+
 bool wifiBusy() { return state == S_JOINING || state == S_MSG; }
 
 void wifiStart() {
@@ -240,8 +251,12 @@ WifiResult wifiLoop() {
   if (state == S_LIST && scanning) {
     int n = WiFi.scanComplete();
     bool failed = (n == -2 && millis() - scanAt > 400) || millis() - scanAt > 15000;
-    if (n >= 0) { gather(); wifiDraw(); }
-    else if (failed) {
+    if (n > 0 || (n == 0 && scanTries >= 3)) { gather(); wifiDraw(); }
+    else if (n == 0 && millis() - scanAt > 600) {   // came back with nothing: ask again (up to 3 more times)
+      scanTries++;
+      mnLog("wifi: scan found nothing, again (%d)", scanTries);
+      startScan();
+    } else if (failed) {
       // a scan that didn't start or didn't finish: try again (up to 3 more times) before giving up
       if (++scanTries < 4) { mnLog("wifi: scan again (%d)", scanTries); startScan(); }
       else { gather(); wifiDraw(); }

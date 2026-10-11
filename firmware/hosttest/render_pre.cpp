@@ -119,6 +119,10 @@ static const char* const PREV[] = {
   "14:03:30 battery 3916 mV (49%, not charging)",
   "14:03:33 sudoku: making a puzzle",
   "(this is a made-up example)"};
+int diagRestartCount() { return 4; }
+String diagRestartLine(int i) { static const char* const L[] = {"#41  Power on", "#40  On purpose - joined a new Wi-Fi network  (ran 3h 5m)", "#39  CRASH  (ran 1h 12m)", "#38  Power on"}; return L[i]; }
+bool diagRestartBadAt(int i) { return i == 2; }
+String diagCrashText() { return ""; }
 int diagPrevLineCount() { return 5; }
 const char* diagPrevLine(int i) { return PREV[i]; }
 int diagBatCount() { return fakeBatN; }

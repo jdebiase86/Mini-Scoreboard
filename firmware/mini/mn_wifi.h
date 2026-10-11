@@ -12,6 +12,7 @@ void wifiDraw();                     // everything again (after a wake-up or a s
 WifiResult wifiTap(int x, int y);
 void wifiSwipe(bool up);             // list: swipe up = next page
 WifiResult wifiLoop();               // call often: shows the networks when found, runs a join
+void wifiLeave();                    // leaving the screen: turn the automatic reconnecting back on
 bool wifiBusy();                     // a join is under way (don't dim the screen)
 
 // The best remembered network that's in range right now (strongest first), or

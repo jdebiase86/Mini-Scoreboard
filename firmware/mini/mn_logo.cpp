@@ -131,7 +131,7 @@ static bool makeRoom(size_t need, const char* saving) {
   return enough();
 }
 
-static bool download(const String& path, int size, uint8_t* buf, size_t& n, int& code) {
+static bool download(const String& path, int size, uint8_t*& buf, size_t& n, int& code) {   // buf is allocated here, once the size is known
   String url = String("https://a.espncdn.com/combiner/i?img=") + path + "&w=" + size + "&h=" + size;
   WiFiClientSecure client;
   client.setInsecure();
@@ -145,12 +145,18 @@ static bool download(const String& path, int size, uint8_t* buf, size_t& n, int&
   http.setUserAgent("Mozilla/5.0 (Mini Scoreboard)");
   code = http.GET();
   if (code != 200) { http.end(); return false; }
+  int len = http.getSize();
+  if (len > (int)MAX_PNG) { http.end(); code = -3; return false; }
+  size_t cap = len > 0 ? (size_t)len + 16 : MAX_PNG;   // as much as the picture needs, not always the biggest it could be
+  free(buf);
+  buf = (uint8_t*)heap_caps_malloc(cap, MALLOC_CAP_8BIT);
+  if (!buf) { http.end(); code = -4; return false; }
   WiFiClient* s = http.getStreamPtr();
   uint32_t last = millis();
-  while ((http.connected() || s->available()) && n < MAX_PNG && millis() - last < 10000) {
+  while ((http.connected() || s->available()) && n < cap && millis() - last < 10000) {
     int a = s->available();
     if (a <= 0) { delay(5); continue; }
-    int k = s->read(buf + n, min((size_t)a, MAX_PNG - n));
+    int k = s->read(buf + n, min((size_t)a, cap - n));
     if (k > 0) { n += k; last = millis(); }
   }
   http.end();
@@ -177,9 +183,9 @@ bool logoFetchOne() {
     if (fetched >= 8) { pushWant(w); return false; }
     fetched++;
   }
-  if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < 60000) { pushWant(w); delay(500); return true; }   // short of memory: later
-  uint8_t* buf = (uint8_t*)heap_caps_malloc(MAX_PNG, MALLOC_CAP_8BIT);
-  if (!buf) return true;
+  // the secure connection needs its two 16 KB buffers in one piece each; the picture itself is only as big as it is
+  if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < 36000) { pushWant(w); delay(500); return true; }   // short of memory: later
+  uint8_t* buf = nullptr;
   bool ok = false;
   size_t n = 0;
   int code = 0;
@@ -203,6 +209,8 @@ bool logoFetchOne() {
       if (wrote) { LittleFS.remove(fn); LittleFS.rename(tmp, fn); markRecent(w.key); version++; mnLog("logo %s saved (%u bytes)", w.key, (unsigned)n); }
       else LittleFS.remove(tmp);
     }
+  } else if (!ok && code == -4) {
+    pushWant(w);   // no room for the picture just now: asked again later, not written off
   } else if (!ok) {
     if (code != -2) mnLog("logo %s failed (HTTP %d)", w.key, code);
     portENTER_CRITICAL(&mux);
@@ -218,9 +226,20 @@ bool logoFetchOne() {
 #endif
 
 // ------------------------------------------------------------- drawing
-struct Ctx { PNG* png; int x0, y0, size; uint8_t br, bg, bb; bool keyed; bool clr[128]; lgfx::rgb565_t line[128]; };
+struct Ctx { PNG* png; int x0, y0, size; uint8_t br, bg, bb; bool keyed; int dst, src; bool clr[128]; lgfx::rgb565_t line[128]; lgfx::rgb565_t wide[128]; bool wclr[128]; };
 
 static inline uint8_t mix(uint8_t f, uint8_t b, uint8_t a) { return (f * a + b * (255 - a) + 127) / 255; }
+
+static void pushRow(Ctx* c, int y, int w, const lgfx::rgb565_t* line, const bool* clr) {
+  if (!c->keyed) { lcd.pushImage(c->x0, c->y0 + y, w, 1, line); return; }
+  int x = 0;   // over a picture: only the parts of the row that are not clear
+  while (x < w) {
+    while (x < w && clr[x]) x++;
+    int st = x;
+    while (x < w && !clr[x]) x++;
+    if (x > st) lcd.pushImage(c->x0 + st, c->y0 + y, x - st, 1, line + st);
+  }
+}
 
 static int drawLine(PNGDRAW* d) {
   Ctx* c = (Ctx*)d->pUser;
@@ -257,17 +276,15 @@ static int drawLine(PNGDRAW* d) {
     c->line[x] = lgfx::rgb565_t(r, g, b);
     c->clr[x] = clear;
   }
-  if (c->keyed) {   // over a picture: only the parts of the row that are not clear
-    int x = 0;
-    while (x < w) {
-      while (x < w && c->clr[x]) x++;
-      int st = x;
-      while (x < w && !c->clr[x]) x++;
-      if (x > st) lcd.pushImage(c->x0 + st, c->y0 + d->y, x - st, 1, c->line + st);
-    }
+  if (c->dst > c->src) {   // a smaller stored logo blown up to the bigger size (nearest pixel) until the big one is downloaded
+    int dw = w * c->dst / c->src;
+    if (dw > 128) dw = 128;
+    for (int x = 0; x < dw; x++) { int sx = x * c->src / c->dst; c->wide[x] = c->line[sx]; c->wclr[x] = c->clr[sx]; }
+    int ya = d->y * c->dst / c->src, yb = (d->y + 1) * c->dst / c->src;
+    for (int yy = ya; yy < yb; yy++) pushRow(c, yy, dw, c->wide, c->wclr);
     return 1;
   }
-  lcd.pushImage(c->x0, c->y0 + d->y, w, 1, c->line);
+  pushRow(c, d->y, w, c->line, c->clr);
   return 1;
 }
 
@@ -276,7 +293,13 @@ static bool logoDrawImpl(const TeamSide& t, int cx, int cy, int size, uint16_t b
   if (!keyOf(t, size, key)) return false;
   size_t n = 0;
   uint8_t* buf = loadFile(key, n);
-  if (!buf) { want(key, t, size); return false; }
+  int srcSize = size;
+  if (!buf) {
+    want(key, t, size);
+    char k2[40];
+    if (size == 112 && keyOf(t, 76, k2)) { buf = loadFile(k2, n); srcSize = 76; }   // the tile size will do for now
+    if (!buf) return false;
+  }
   PNG* png = (PNG*)malloc(sizeof(PNG));
   if (!png) { free(buf); return false; }   // short of memory: the letters show; asked again next redraw
   new (png) PNG();
@@ -286,8 +309,10 @@ static bool logoDrawImpl(const TeamSide& t, int cx, int cy, int size, uint16_t b
     c->png = png;
     c->size = size;
     c->keyed = keyed;
-    c->x0 = cx - png->getWidth() / 2;
-    c->y0 = cy - png->getHeight() / 2;
+    c->dst = size; c->src = srcSize;
+    int pw = png->getWidth() * size / srcSize, ph = png->getHeight() * size / srcSize;
+    c->x0 = cx - pw / 2;
+    c->y0 = cy - ph / 2;
     // the tile colour as 8-bit red, green, blue
     c->br = ((bg >> 11) & 31) * 255 / 31; c->bg = ((bg >> 5) & 63) * 255 / 63; c->bb = (bg & 31) * 255 / 31;
     ok = png->decode(c, 0) == PNG_SUCCESS;
