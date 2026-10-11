@@ -585,6 +585,11 @@ resume after, and retry a failed scan once; (b) low memory during the scan + TLS
 slow to rejoin a hotspot that comes back; try the saved network more often at first (every 10-15 s for two minutes, then every minute),
 and show a clear "looking for <name>" line with a Try now button instead of the setup screen.
 
+(12) Home Wi-Fi missing from the scan list but joined fine when typed under "Other network" (Joe, Oct 11, at home). Found in mn_wifi.cpp gather():
+the list keeps the first 24 networks the scan reports (MAX_APS) and only sorts them by strength afterwards, so in a busy area a strong
+network can be dropped before it is ever compared. Fix: keep the strongest, replacing the weakest when full (and allow ~40); scan again
+once if the list comes back empty or tiny; show "Scanning..." with a count so it is clear it finished. The same list serves the hotspot case.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
