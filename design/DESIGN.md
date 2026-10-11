@@ -577,6 +577,14 @@ Same for end of quarter, delays and the two-minute break between periods if thei
 Hotspot (Oct 11): a phone hotspot was not found until "Maximize Compatibility" (2.4 GHz) was on; it then joined and rejoined on its own.
 Add a short tip to the Wi-Fi page about 2.4 GHz and Maximize Compatibility.
 
+(11) Hotspot lost, then a rescan from the Wi-Fi page restarted the board (Joe, Oct 11, in the car). Not yet explained: the live-game watchdog only
+acts while Wi-Fi is connected, so it is not that one; the restart reason on the About page (and mini.local/log) will say whether it was a
+crash. Suspects: (a) the Wi-Fi page starts a background scan (mn_wifi.cpp startScan) while the radio is still retrying the lost network
+(mini.ino roam() calls WiFi.reconnect() every minute), and the two fight; fix: stop the retry (WiFi.disconnect) while the page scans and
+resume after, and retry a failed scan once; (b) low memory during the scan + TLS (see the memory item). Also: after a drop the board is
+slow to rejoin a hotspot that comes back; try the saved network more often at first (every 10-15 s for two minutes, then every minute),
+and show a clear "looking for <name>" line with a Try now button instead of the setup screen.
+
 ## Older notes (Oct 10 night; the first two items and the Wi-Fi arrows are done in 0.10)
 - Upcoming-game screen: two big logos and the start time, one small line under
   them; the stats (starters, leaders, records, stadium) move behind a tap
